@@ -52,9 +52,12 @@ test("the preview's before is the header's number, and its after is what a press
   })
   assert.equal(effectiveStats(afterPlayer, afterInv).str.total, preview.after)
 
-  // The flyout: the stat being maximized first, then what else moves, from and to.
+  // The flyout: all four stats in the header's order, whichever chip is hovered; unmoved ones read as zero.
+  const current = effectiveStats(p, inv)
   assert.deepEqual(previewRows(preview), [
     { stat: 'str', from: preview.before, to: preview.after, delta: preview.deltas.str },
+    { stat: 'dex', from: current.dex.total, to: current.dex.total, delta: 0 },
+    { stat: 'mag', from: current.mag.total, to: current.mag.total, delta: 0 },
     { stat: 'def', from: 90 + 13, to: 90, delta: -13 },
   ])
 })
@@ -66,5 +69,6 @@ test('nothing to change: the flyout shows only the stat as it stands', () => {
   assert.equal(preview.changed, false)
   assert.equal(preview.after, 300 + 45 + 30)
   assert.equal(preview.swaps, 0)
-  assert.deepEqual(previewRows(preview), [{ stat: 'str', from: 375, to: 375, delta: 0 }])
+  assert.deepEqual(previewRows(preview).map((r) => r.delta), [0, 0, 0, 0])
+  assert.deepEqual(previewRows(preview)[0], { stat: 'str', from: 375, to: 375, delta: 0 })
 })

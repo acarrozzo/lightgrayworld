@@ -4554,6 +4554,7 @@ export default function GameInterface() {
                         onUseItem={(itemId, action) => socketHandlers.sendGameAction({ type: 'use_item', data: { playerItemId: itemId, action } })}
                         onCastSpell={(spellId) => socketHandlers.sendGameAction({ type: 'cast_spell', data: { spellId } })}
                         onUseSkill={(skillId) => socketHandlers.sendGameAction({ type: 'use_skill', data: { skillId } })}
+                        onAutoEquip={(action) => socketHandlers.sendGameAction(action)}
                         player={player}
                         onDismissResult={() => {
                           // Death: pressing Rise is the respawn move itself. The

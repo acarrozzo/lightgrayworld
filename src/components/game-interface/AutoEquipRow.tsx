@@ -4,6 +4,9 @@ import { Fragment, useEffect, useMemo, useRef, useState, type PointerEvent } fro
 import { Info, SlidersHorizontal } from 'lucide-react'
 import { useGameStore } from '@/lib/game-state'
 import type { StatKey } from '@/lib/effective-stats'
+import EntryRow from '@/components/EntryRow'
+import { followFeedLink } from '@/lib/feed-links'
+import { LayerLink } from './LayerShell'
 import {
   AUTO_EQUIP_MODES,
   previewAutoEquip,
@@ -14,19 +17,37 @@ import {
   type AutoEquipPreview,
 } from '@/lib/auto-equip'
 
+/** The one action a chip sends; the server plans the loadout from its own rows. */
+export type AutoEquipAction = { type: 'auto_equip'; data: { mode: AutoEquipMode; skipNegatives: boolean } }
+
+/**
+ * `inline`: the bag's MAX line — label, info dot, chips, filter, flyouts
+ * opening downward. `deck`: the gear row at the foot of the deck's Attack
+ * list — icon, name, subline, the chips under them and the filter where a
+ * row's verb sits, flyouts opening upward so they never fall under the
+ * card's edge.
+ */
+export type AutoEquipLayout = 'inline' | 'deck'
+
 interface AutoEquipRowProps {
   disabled: boolean
-  onAction?: (action: { type: string; data?: any }) => void
+  onAction?: (action: AutoEquipAction) => void
+  layout?: AutoEquipLayout
 }
 
 const CHIP =
-  'px-2.5 py-1 text-[11px] font-semibold rounded border transition-colors duration-200 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent'
+  'px-2.5 py-1 text-[11px] font-semibold rounded border transition-colors duration-200 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus'
+
+/** A chip that would change nothing: dashed, dim, checked. It still answers hover with the flyout. */
+const CHIP_DONE = 'border-dashed border-line-subtle text-fg-disabled bg-transparent cursor-default hover:bg-transparent'
 
 /** How long a press stays "in flight" if no inventory ever comes back (a refused action, a dropped socket). */
 const PENDING_TIMEOUT_MS = 4000
 
 const FLYOUT =
-  'pointer-events-none absolute left-0 top-full z-30 mt-1 max-w-[calc(100vw-2rem)] rounded-md border border-line-subtle bg-surface-raised p-2.5 text-[11px] leading-snug text-fg-secondary shadow-lg'
+  'pointer-events-none absolute left-0 z-30 max-w-[calc(100vw-2rem)] rounded-md border border-line-subtle bg-surface-raised p-2.5 text-[11px] leading-snug text-fg-secondary shadow-lg'
+/** Where a flyout or the options menu hangs from, by layout. */
+const POP_SIDE: Record<AutoEquipLayout, string> = { inline: 'top-full mt-1', deck: 'bottom-full mb-1' }
 
 const STAT_TONE: Record<StatKey, string> = { str: 'text-stat-str', dex: 'text-stat-dex', mag: 'text-stat-mag', def: 'text-stat-def' }
 
@@ -37,9 +58,9 @@ const changeTone = (delta: number) => (delta > 0 ? 'text-status-success' : delta
  * from where it is to where it would land, the one it is named for first.
  * Gains green, losses red, as the gear compare reads.
  */
-function PreviewFlyout({ mode, preview }: { mode: AutoEquipModeDef; preview: AutoEquipPreview }) {
+function PreviewFlyout({ mode, preview, side }: { mode: AutoEquipModeDef; preview: AutoEquipPreview; side: string }) {
   return (
-    <div id="auto-equip-preview" role="tooltip" className={`${FLYOUT} w-56`}>
+    <div id="auto-equip-preview" role="tooltip" className={`${FLYOUT} ${side} w-56`}>
       <p className="text-fg-primary">{mode.title}</p>
       {preview.changed ? (
         <>
@@ -85,8 +106,13 @@ function PreviewFlyout({ mode, preview }: { mode: AutoEquipModeDef; preview: Aut
  * stat it moves, from and to — and that flyout is the only place it shows:
  * the chips, the stat line and the header stay as they are. Touch, with no
  * hover, just presses.
+ *
+ * In the deck a chip that would change nothing is drawn done (dashed, a
+ * check) and does not send: in a fight the server answers a no-op with the
+ * enemy's swing, so the deck keeps it from being pressed, as it keeps every
+ * refused row. The bag's line leaves the chips as they are.
  */
-export default function AutoEquipRow({ disabled, onAction }: AutoEquipRowProps) {
+export default function AutoEquipRow({ disabled, onAction, layout = 'inline' }: AutoEquipRowProps) {
   const inventory = useGameStore((state) => state.inventory)
   const player = useGameStore((state) => state.player)
   const [skipNegatives, setSkipNegatives] = useAutoEquipSkipNegatives()
@@ -97,6 +123,8 @@ export default function AutoEquipRow({ disabled, onAction }: AutoEquipRowProps) 
   const [hovered, setHovered] = useState<AutoEquipModeDef | null>(null)
   const inventoryAtPressRef = useRef(inventory)
   const rootRef = useRef<HTMLDivElement>(null)
+  const inDeck = layout === 'deck'
+  const side = POP_SIDE[layout]
 
   useEffect(() => {
     if (!open) return
@@ -107,7 +135,7 @@ export default function AutoEquipRow({ disabled, onAction }: AutoEquipRowProps) 
     return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [open])
 
-  // Every mode planned against what is owned now, for the flyout.
+  // Every mode planned against what is owned now, for the flyout and, in the deck, the done chips.
   const previews = useMemo(() => {
     const byMode = {} as Record<AutoEquipMode, AutoEquipPreview>
     for (const mode of AUTO_EQUIP_MODES) byMode[mode.id] = previewAutoEquip(player, inventory, mode.id, skipNegatives)
@@ -133,6 +161,7 @@ export default function AutoEquipRow({ disabled, onAction }: AutoEquipRowProps) 
 
   const run = (mode: AutoEquipMode) => {
     if (pending) return
+    if (inDeck && !previews[mode].changed) return
     showPreview(null)
     inventoryAtPressRef.current = inventory
     setPending(mode)
@@ -140,6 +169,94 @@ export default function AutoEquipRow({ disabled, onAction }: AutoEquipRowProps) 
   }
 
   const locked = disabled || pending !== null
+
+  const chips = AUTO_EQUIP_MODES.map((mode) => {
+    const inFlight = pending === mode.id
+    const done = inDeck && !previews[mode.id].changed
+    return (
+      <button
+        key={mode.id}
+        type="button"
+        disabled={locked}
+        aria-busy={inFlight}
+        // Not `disabled`: a done chip still answers hover with the flyout, which says why.
+        aria-disabled={done || undefined}
+        aria-describedby={hovered?.id === mode.id ? 'auto-equip-preview' : undefined}
+        onClick={() => run(mode.id)}
+        onPointerEnter={onPointerEnter(mode)}
+        onPointerLeave={() => showPreview(null)}
+        onFocus={() => showPreview(mode)}
+        onBlur={() => showPreview(null)}
+        className={`${CHIP} ${done ? CHIP_DONE : mode.className} ${inFlight ? 'animate-pulse !opacity-90' : ''}`}
+      >
+        {mode.label}
+        {done && <span aria-hidden="true"> ✓</span>}
+      </button>
+    )
+  })
+
+  const filter = (
+    <button
+      type="button"
+      onClick={() => setOpen((prev) => !prev)}
+      aria-haspopup="true"
+      aria-expanded={open}
+      aria-label="Auto-equip options"
+      title="Auto-equip options"
+      className={`rounded border transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${inDeck ? 'p-2' : 'p-1'} ${
+        skipNegatives
+          ? 'text-status-error border-status-error/50 bg-status-error/10'
+          : 'text-fg-secondary border-line-subtle/50 hover:border-line-strong/50 hover:bg-surface-raised/50'
+      }`}
+    >
+      <SlidersHorizontal size={inDeck ? 14 : 12} />
+    </button>
+  )
+
+  const popovers = (
+    <>
+      {hovered && !pending && !infoOpen && !open && <PreviewFlyout mode={hovered} preview={previews[hovered.id]} side={side} />}
+      {open && (
+        <div className={`absolute z-20 p-1 rounded-md bg-surface-raised border border-line-subtle shadow-lg ${side} ${inDeck ? 'right-0' : 'left-0'}`}>
+          <label className="flex items-center gap-2 px-2 py-1 text-[11px] text-fg-secondary cursor-pointer select-none whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={skipNegatives}
+              onChange={(event) => setSkipNegatives(event.target.checked)}
+              className="accent-status-error"
+            />
+            Skip items with a negative stat
+          </label>
+        </div>
+      )}
+    </>
+  )
+
+  if (inDeck) {
+    return (
+      <div ref={rootRef} className="relative">
+        {popovers}
+        <EntryRow
+          density="deck"
+          icon="magicarmor"
+          iconClass="text-stat-def opacity-90"
+          name="Max gear"
+          subline={<span className="text-[10px] text-fg-muted">Best gear you own for one stat · takes 1 turn</span>}
+          extra={
+            <>
+              <span className="mt-1.5 flex flex-wrap items-center gap-1.5">{chips}</span>
+              {/* The bag, for dressing by hand: the same link the Actions tab's footer carries. */}
+              <span className="mt-1.5 text-[11px]">
+                <LayerLink onClick={() => followFeedLink({ tab: 'inv' })}>Open inventory</LayerLink>
+              </span>
+            </>
+          }
+          action={filter}
+          className="rounded-lg border-l-[3px] border-line-strong/70 bg-surface-raised/45 hover:bg-surface-raised/60 items-start"
+        />
+      </div>
+    )
+  }
 
   return (
     <div ref={rootRef} className="relative flex flex-wrap items-center gap-1.5">
@@ -162,7 +279,7 @@ export default function AutoEquipRow({ disabled, onAction }: AutoEquipRowProps) 
         <div
           id="auto-equip-info"
           role="tooltip"
-          className={`${FLYOUT} w-64`}
+          className={`${FLYOUT} ${side} w-64`}
         >
           <p className="text-fg-primary">One tap puts on the best gear you own for that stat.</p>
           <ul className="mt-1.5 space-y-0.5">
@@ -174,55 +291,9 @@ export default function AutoEquipRow({ disabled, onAction }: AutoEquipRowProps) 
           </ul>
         </div>
       )}
-      {hovered && !pending && !infoOpen && !open && <PreviewFlyout mode={hovered} preview={previews[hovered.id]} />}
-      {AUTO_EQUIP_MODES.map((mode) => {
-        const inFlight = pending === mode.id
-        return (
-          <button
-            key={mode.id}
-            type="button"
-            disabled={locked}
-            aria-busy={inFlight}
-            aria-describedby={hovered?.id === mode.id ? 'auto-equip-preview' : undefined}
-            onClick={() => run(mode.id)}
-            onPointerEnter={onPointerEnter(mode)}
-            onPointerLeave={() => showPreview(null)}
-            onFocus={() => showPreview(mode)}
-            onBlur={() => showPreview(null)}
-            className={`${CHIP} ${mode.className} ${inFlight ? 'animate-pulse !opacity-90' : ''}`}
-          >
-            {mode.label}
-          </button>
-        )
-      })}
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-haspopup="true"
-        aria-expanded={open}
-        aria-label="Auto-equip options"
-        title="Auto-equip options"
-        className={`p-1 rounded border transition-colors duration-200 ${
-          skipNegatives
-            ? 'text-status-error border-status-error/50 bg-status-error/10'
-            : 'text-fg-secondary border-line-subtle/50 hover:border-line-strong/50 hover:bg-surface-raised/50'
-        }`}
-      >
-        <SlidersHorizontal size={12} />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-20 p-1 rounded-md bg-surface-raised border border-line-subtle shadow-lg">
-          <label className="flex items-center gap-2 px-2 py-1 text-[11px] text-fg-secondary cursor-pointer select-none whitespace-nowrap">
-            <input
-              type="checkbox"
-              checked={skipNegatives}
-              onChange={(event) => setSkipNegatives(event.target.checked)}
-              className="accent-status-error"
-            />
-            Skip items with a negative stat
-          </label>
-        </div>
-      )}
+      {popovers}
+      {chips}
+      {filter}
     </div>
   )
 }

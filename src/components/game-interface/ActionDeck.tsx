@@ -13,6 +13,8 @@ import { followFeedLink } from '@/lib/feed-links'
 import EntryRow, { EntryVerb } from '@/components/EntryRow'
 import { ABILITY_GRID, LevelTag, ROW_FRAME, SpellRow, useConsumableDeck } from './AbilityRows'
 import ConsumableDeck, { DECK_HIGHLIGHT } from './ConsumableDeck'
+import AutoEquipRow, { type AutoEquipAction } from './AutoEquipRow'
+import { hasGearForMaxRow } from '@/lib/auto-equip'
 
 export interface ActionDeckProps {
   /**
@@ -33,6 +35,11 @@ export interface ActionDeckProps {
   onUseSkill: (skillId: string) => void
   onCastSpell: (spellId: string) => void
   onUseItem: (playerItemId: string, action: string) => void
+  /**
+   * The MAX chips at the foot of the Attack list: one tap dresses for a stat,
+   * the same `auto_equip` the bag's line sends. Left out, no gear row.
+   */
+  onAutoEquip?: (action: AutoEquipAction) => void
   /** Out of a fight: tap a name to read it in the book. Omit in battle, where the row body goes inert. */
   onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
   /** Out of a fight: tap an item's name to open it in the bag. */
@@ -79,6 +86,7 @@ export default function ActionDeck({
   onUseSkill,
   onCastSpell,
   onUseItem,
+  onAutoEquip,
   onOpenBook,
   onOpenItem,
   listClassName = '',
@@ -264,6 +272,16 @@ export default function ActionDeck({
                 />
               )
             })}
+
+            {/* The foot of the list, behind the hairline the side panels
+                close with: the bag's MAX chips as a gear row, so a fight
+                can change its loadout without leaving the card. Drawn once
+                the bag holds enough gear for the bag's own line to show. */}
+            {onAutoEquip && hasGearForMaxRow(inventory) && (
+              <div className="col-span-full mt-1 border-t border-line-subtle/40 pt-2">
+                <AutoEquipRow layout="deck" disabled={isActing} onAction={onAutoEquip} />
+              </div>
+            )}
           </div>
         )}
 

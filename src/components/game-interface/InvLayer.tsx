@@ -20,6 +20,7 @@ import {
 } from '@/lib/inventory-categories'
 import type { UnlockId } from '@/lib/unlocks'
 import AutoEquipRow from './AutoEquipRow'
+import { hasGearForMaxRow } from '@/lib/auto-equip'
 import CoreStatsGrid, { CoreStatsLine, type StatPreview } from './CoreStatsGrid'
 import EquipmentGrid from './EquipmentGrid'
 import LayerShell, { HeaderTabs, ScrollEnd, useDeck } from './LayerShell'
@@ -47,9 +48,6 @@ const GROUP_TABS: Array<{ id: FilterGroup; label: string; unlock?: UnlockId }> =
 ]
 
 const STAT_KEYS = ['str', 'dex', 'mag', 'def'] as const
-
-/** How many equippable items a character must carry before the MAX row is offered. */
-const MAX_ROW_MIN_GEAR = 5
 
 /** Past this many equippable items the bag is long enough to want a search box. */
 const SEARCH_MIN_GEAR = 20
@@ -206,7 +204,7 @@ export default function InvLayer({
   // "Put on my best" means nothing until there is a best to choose: the MAX
   // row waits for a fifth piece of gear.
   const gearCount = useMemo(() => inventory.filter((item) => item.template.equipSlot).length, [inventory])
-  const maxRow = gearCount >= MAX_ROW_MIN_GEAR ? <AutoEquipRow disabled={disabled || !onAction} onAction={onAction} /> : null
+  const maxRow = hasGearForMaxRow(inventory) ? <AutoEquipRow disabled={disabled || !onAction} onAction={onAction} /> : null
   const bag = (
     <InventoryDisplay
       inventory={inventory}

@@ -9,6 +9,7 @@ import BattleDuel from '@/components/game-interface/BattleDuel'
 import { resolveItemIcon } from '@/lib/item-actions'
 import { spellTone } from '@/lib/spellbook'
 import ActionDeck from '@/components/game-interface/ActionDeck'
+import type { AutoEquipAction } from '@/components/game-interface/AutoEquipRow'
 import { deckContextFromBattle } from '@/lib/action-deck'
 import { skillTone } from '@/lib/skillbook'
 import { perkIcon } from '@/lib/game-data/enemy-traits'
@@ -103,6 +104,8 @@ interface BattlePanelProps {
   onCastSpell: (spellId: string) => void
   /** Strike with a skill — Slice, Smash, Aim, Magic Strike — on this turn's swing. */
   onUseSkill: (skillId: string) => void
+  /** The gear row at the foot of the Attack list: the bag's MAX action, one support turn in a fight. */
+  onAutoEquip?: (action: AutoEquipAction) => void
   onDismissResult: () => void
   /**
    * Pressing a dropped item on the victory card: opens the bag to it. Given
@@ -752,6 +755,7 @@ export default function BattlePanel({
   onUseItem,
   onCastSpell,
   onUseSkill,
+  onAutoEquip,
   onDismissResult,
   isActing,
   playerMpMax,
@@ -1270,6 +1274,7 @@ export default function BattlePanel({
           isActing={isActing}
           onAttack={onAttack}
           onUseSkill={onUseSkill}
+          onAutoEquip={onAutoEquip}
           onCastSpell={onCastSpell}
           onUseItem={onUseItem}
           // Pinned, the list takes whatever height the column leaves. Scrolling,

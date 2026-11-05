@@ -112,6 +112,7 @@ export function DeckContent({ tab, ...props }: DeckContentProps & { tab: DeckTab
       onUseSkill={props.onUseSkill}
       onCastSpell={props.onCastSpell}
       onUseItem={props.onUseItem}
+      onAutoEquip={props.onAction}
       onOpenBook={props.onOpenBook}
       onOpenInventory={props.onOpenInventory}
       focus={props.actionFocus}

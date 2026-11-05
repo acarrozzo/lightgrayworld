@@ -36,6 +36,14 @@ export const AUTO_EQUIP_MODES: readonly AutoEquipModeDef[] = [
 ]
 
 /**
+ * How much gear a bag holds before a MAX row is worth drawing: with less,
+ * dressing by hand is the same few taps. The bag's line and the deck's gear
+ * row share the rule, so the two appear together.
+ */
+export const MAX_ROW_MIN_GEAR = 5
+export const hasGearForMaxRow = (inventory: InventoryItem[]) => inventory.filter((item) => item.template.equipSlot).length >= MAX_ROW_MIN_GEAR
+
+/**
  * Whether auto-equip passes over items that carry a negative stat. Off by
  * default, as the original included them. A per-device convenience kept in
  * localStorage and sent along with each request; the server only trusts the
@@ -93,10 +101,11 @@ export function previewAutoEquip(player: Player | null | undefined, inventory: I
 }
 
 /**
- * The flyout's rows: the stat being maximized first, then any other stat the
- * swap moves, each from where it is to where it would land.
+ * The flyout's rows: all four stats in the header's order (STR, DEX, MAG,
+ * DEF), each from where it is to where it would land, whichever chip is
+ * hovered. One that the swap does not move reads as a zero, so the eye finds
+ * each stat in the same place on every chip.
  */
 export function previewRows(preview: AutoEquipPreview): Array<{ stat: StatKey; from: number; to: number; delta: number }> {
-  const keys = [preview.stat, ...STAT_KEYS.filter((key) => key !== preview.stat && preview.deltas[key] !== 0)]
-  return keys.map((key) => ({ stat: key, from: preview.current[key], to: preview.current[key] + preview.deltas[key], delta: preview.deltas[key] }))
+  return STAT_KEYS.map((key) => ({ stat: key, from: preview.current[key], to: preview.current[key] + preview.deltas[key], delta: preview.deltas[key] }))
 }

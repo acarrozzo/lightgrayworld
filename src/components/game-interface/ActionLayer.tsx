@@ -9,6 +9,7 @@ import { getCastableSpells } from '@/lib/spellbook'
 import { startingActionTab, type ActionFocus, type ActionTab } from '@/lib/use-action-tab'
 import { useConsumableDeck } from './AbilityRows'
 import ActionDeck from './ActionDeck'
+import type { AutoEquipAction } from './AutoEquipRow'
 import LayerShell, { HeaderTabs, LayerLink, useDeck } from './LayerShell'
 
 type RoomEnemyLike = Parameters<typeof targetFromRoomEnemy>[0]
@@ -27,6 +28,8 @@ interface ActionLayerProps {
   onUseSkill: (skillId: string) => void
   onCastSpell: (spellId: string) => void
   onUseItem: (playerItemId: string, action: string) => void
+  /** The gear row at the foot of the Attack list; the bag's MAX action. */
+  onAutoEquip?: (action: AutoEquipAction) => void
   onOpenBook?: (tab: 'skills' | 'spells', highlightId?: string) => void
   /** Switches to the Inv tab. */
   onOpenInventory: (filter?: FilterTab, openItemId?: string) => void
@@ -56,6 +59,7 @@ export default function ActionLayer({
   onUseSkill,
   onCastSpell,
   onUseItem,
+  onAutoEquip,
   onOpenBook,
   onOpenInventory,
   focus = null,
@@ -153,6 +157,7 @@ export default function ActionLayer({
         onUseSkill={onUseSkill}
         onCastSpell={onCastSpell}
         onUseItem={onUseItem}
+        onAutoEquip={onAutoEquip}
         onOpenBook={battle.isInBattle ? undefined : onOpenBook}
         onOpenItem={battle.isInBattle ? undefined : (playerItemId) => onOpenInventory('consumables', playerItemId)}
         // The layer's own body scrolls, on a phone page and in the column alike.
