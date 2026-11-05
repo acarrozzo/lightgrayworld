@@ -74,7 +74,7 @@ function victoryDropNames(payload: { dropDetails?: { slug: string; qty: number }
 import { useGameSocketBindings } from './game-interface/useGameSocketBindings'
 import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
-import QuestsPanel, { QUEST_SUB_TABS, type QuestsTab } from './game-interface/panels/QuestsPanel'
+import QuestsPanel, { QUEST_SUB_TABS, type QuestsTab, type BattleLogPreset, type BattleOutcome } from './game-interface/panels/QuestsPanel'
 import { countReadyQuests } from '@/lib/quest-journal'
 import type { WorldEntry, WorldTab } from './game-interface/WorldLayer'
 import PanelResizeHandle from './game-interface/PanelResizeHandle'
@@ -360,6 +360,9 @@ export default function GameInterface() {
   }, [])
   const [playersSubTab, setPlayersSubTab] = useState<PlayersSubTab>('roster')
   const [questsTab, setQuestsTab] = useState<QuestsTab>('quests')
+  // A filter the Battle Log opens on (the Char page's Deaths line). Cleared by
+  // every other way to the tab, so the log is plain again when opened by hand.
+  const [battleLogPreset, setBattleLogPreset] = useState<BattleLogPreset | null>(null)
   const [forceWorldChatMode, setForceWorldChatMode] = useState<InputMode | undefined>(undefined)
   const quests = useGameStore((s) => s.quests)
   const setQuests = useGameStore((s) => s.setQuests)
@@ -3387,7 +3390,10 @@ export default function GameInterface() {
   // filter is reset when it is left, so a link can set it before opening.
   const openTab = useCallback((tab: TabId) => {
     if (tab === 'char') setCharTab('char')
-    if (tab === 'quests') setQuestsTab('quests')
+    if (tab === 'quests') {
+      setQuestsTab('quests')
+      setBattleLogPreset(null)
+    }
     if (tab === 'world') {
       setWorldTab('map')
       setWorldEntry((prev) => ({ view: 'world', seq: prev.seq + 1 }))
@@ -3397,10 +3403,12 @@ export default function GameInterface() {
     setCenterActiveTab(tab)
   }, [])
 
-  // The Char page's "Kill list ›" and "All fights ›": the Quests tab on that page.
-  const openQuestsPage = useCallback((tab: QuestsTab) => {
+  // The Char page's "Kill list ›", "All fights ›" and "Battle log ›" on the
+  // Deaths line: the Quests tab on that page, the log filtered when asked.
+  const openQuestsPage = useCallback((tab: QuestsTab, outcome?: BattleOutcome) => {
     openTab('quests')
     setQuestsTab(tab)
+    if (tab === 'battle-log' && outcome) setBattleLogPreset((prev) => ({ outcome, seq: (prev?.seq ?? 0) + 1 }))
   }, [openTab])
 
   // A tile in the bar: open its tab, or go home if it is the one open.
@@ -3827,6 +3835,7 @@ export default function GameInterface() {
         return (
           <QuestsPanel
             activeTab={questsTab}
+            battleLogPreset={battleLogPreset}
             trackedQuestIds={trackedQuestStore.ids}
             onTrackQuest={trackedQuestStore.toggle}
             onOpenPlayerProfile={handleOpenPlayerProfile}
@@ -3886,7 +3895,7 @@ export default function GameInterface() {
       default:
         return null
     }
-  }, [goToExplore, centerActiveTab, charTab, questsTab, trackedQuestStore.ids, trackedQuestStore.toggle, bookFullScreen, renderBook, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, canHunt, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentRoom, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
+  }, [goToExplore, centerActiveTab, charTab, questsTab, battleLogPreset, trackedQuestStore.ids, trackedQuestStore.toggle, bookFullScreen, renderBook, spBookTab, handlePointsSpent, handleOpenBook, battle.isInBattle, roomEnemy, canHunt, setPlayer, player, handleAction, handleSwitchToInventory, inventory, newItemIds, quests, isLoadingQuests, isResettingQuests, isLoggedIn, handleResetQuests, currentRoom, handleOpenWorldChat, socket, customAction, isLoadingRoom, customActionInputRef, setUnreadCount, forceWorldChatMode, forceFeedFilter, forceFeedChatSubFilter, handleLogoutFlow, appendDMFeed, playersSubTab, totalDmUnread, battle.isInBattle, roomEnemy, handleOpenBook, inventoryOpenId, party, roomPlayers, pendingFollowIds])
 
   if (!player || !isLoggedIn) {
     return <div>Loading...</div>
@@ -3996,7 +4005,7 @@ export default function GameInterface() {
             color="gold"
             active={questsTab}
             home="quests"
-            onChange={setQuestsTab}
+            onChange={(tab) => { setBattleLogPreset(null); setQuestsTab(tab) }}
             tabs={questTabs.map((tab) => ({
               ...tab,
               extra:

@@ -52,6 +52,17 @@ interface QuestsPanelProps {
   onTrackQuest?: (questId: string) => void
   /** A fight replay's "their profile" button: the same modal the Players tab opens. */
   onOpenPlayerProfile?: (player: { id: string; username: string; level: number; uIcon?: string | null; uIconColor?: string | null }) => void
+  /**
+   * An outcome the Battle Log opens filtered to (the Char page's Deaths line
+   * opens it on the fights lost). `seq` changes with each request so the
+   * same outcome asked twice is applied twice; null means the plain log.
+   */
+  battleLogPreset?: BattleLogPreset | null
+}
+
+export interface BattleLogPreset {
+  outcome: BattleOutcome
+  seq: number
 }
 
 const NO_IDS: readonly string[] = []
@@ -81,7 +92,7 @@ function rewardText(rewards: { type: string; amount?: number; itemSlug?: string;
     .join(' · ')
 }
 
-type BattleOutcome = 'WIN' | 'LOSS' | 'FLED'
+export type BattleOutcome = 'WIN' | 'LOSS' | 'FLED'
 
 /**
  * Every fight this character has had, newest first, paged all the way back.
@@ -115,7 +126,7 @@ const LOG_SORTS: { id: string; label: string }[] = [
   { id: 'gold-desc', label: 'Most gold' },
 ]
 
-function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string, string> }) {
+function BattleLogTab({ getAuthHeaders, preset }: { getAuthHeaders: () => Record<string, string>; preset?: BattleLogPreset | null }) {
   const [logs, setLogs] = useState<FightSummary[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -125,7 +136,11 @@ function BattleLogTab({ getAuthHeaders }: { getAuthHeaders: () => Record<string,
   const [ledgers, setLedgers] = useState<Record<string, LedgerTurn[] | null>>({})
   // The filters go to the server, so a page is a page of the filtered list
   // and "Earlier fights" keeps paging through it.
-  const [outcomeFilter, setOutcomeFilter] = useState<LogOutcomeFilter>('all')
+  const [outcomeFilter, setOutcomeFilter] = useState<LogOutcomeFilter>(preset?.outcome ?? 'all')
+  // Opened again with a preset while already showing: take the new filter.
+  useEffect(() => {
+    if (preset) setOutcomeFilter(preset.outcome)
+  }, [preset])
   const [bossesOnly, setBossesOnly] = useState(false)
   const [sort, setSort] = useState('newest')
   const [search, setSearch] = useState('')
@@ -549,6 +564,7 @@ export default function QuestsPanel({
   trackedQuestIds = NO_IDS,
   onTrackQuest,
   onOpenPlayerProfile,
+  battleLogPreset = null,
   isLoadingQuests,
   isResettingQuests,
   isLoggedIn,
@@ -858,7 +874,7 @@ export default function QuestsPanel({
 
         {/* ── Battle Log tab ── */}
         {activeTab === 'battle-log' && (
-          <BattleLogTab getAuthHeaders={getAuthHeaders} />
+          <BattleLogTab getAuthHeaders={getAuthHeaders} preset={battleLogPreset} />
         )}
         <ScrollEnd />
       </div>

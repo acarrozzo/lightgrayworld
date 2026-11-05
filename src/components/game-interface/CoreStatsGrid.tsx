@@ -40,6 +40,17 @@ const PARTS: Array<{ key: 'core' | 'gear' | 'buff' | 'skill'; label: string; fro
   { key: 'skill', label: 'Skills', from: 'Passive skills for what is in hand' },
 ]
 
+/**
+ * The hover box over a stat: its name and total as the heading (coloured by
+ * `data-tip-tone` on the tile), what it does, what it is made of, and the
+ * way to the full breakdown.
+ */
+function statTip(key: StatKey, stat: StatBreakdown): string {
+  const def = STATS.find((entry) => entry.key === key)!
+  const parts = describeStat(def.code, stat).split(' = ')[1] ?? ''
+  return `${def.name} · ${stat.total}\n${def.does(stat.total)}\nMade of ${parts}.\nPress for the breakdown.`
+}
+
 /** "→ 755" beside a total, green for a gain and red for a loss. Nothing when the total would not move. */
 function Becomes({ from, to }: { from: number; to?: number }) {
   if (to === undefined || to === from) return null
@@ -103,7 +114,8 @@ export function CoreStatsLine({ stats, preview, className = '' }: { stats: CoreS
             onClick={() => toggle(key)}
             aria-expanded={open === key}
             aria-controls="core-stat-line-breakdown"
-            title={`${describeStat(code, stats[key])} — press for the breakdown`}
+            title={statTip(key, stats[key])}
+            data-tip-tone={color}
             className={`-mx-0.5 flex items-baseline gap-1 rounded px-1 py-0.5 transition-colors hover:bg-surface-raised/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${open === key ? 'bg-surface-raised/70' : ''}`}
           >
             <span className={`text-[10px] font-semibold uppercase tracking-wide ${color}`}>{code}</span>
@@ -131,7 +143,8 @@ export default function CoreStatsGrid({ stats, preview, className = '' }: { stat
               onClick={() => toggle(key)}
               aria-expanded={open === key}
               aria-controls="core-stat-grid-breakdown"
-              title={`${describeStat(code, stat)} — press for the breakdown`}
+              title={statTip(key, stat)}
+              data-tip-tone={color}
               className={`rounded-xl border px-2 py-1.5 text-center transition-colors hover:border-line-strong hover:bg-surface-raised/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
                 open === key ? 'border-line-strong bg-surface-raised/60' : 'border-line-subtle/40 bg-surface-panel/60'
               }`}

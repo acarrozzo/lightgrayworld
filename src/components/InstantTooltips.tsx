@@ -22,9 +22,14 @@ const EDGE = 8
  * Mouse only: a touch has no hover, and the game's own hover cards (trait
  * tags, the party peek, the map's pins) are already instant and carry no
  * `title`.
+ *
+ * A `title` of more than one line is drawn with its first line as a heading
+ * (the stat tiles: "Strength · 42" over what it does and what it is made
+ * of). An element may colour that heading with `data-tip-tone`, a text
+ * colour class — the stat's own, so the box reads as that stat's.
  */
 export default function InstantTooltips() {
-  const [tip, setTip] = useState<{ text: string; rect: DOMRect } | null>(null)
+  const [tip, setTip] = useState<{ text: string; tone: string | null; rect: DOMRect } | null>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
 
@@ -56,13 +61,14 @@ export default function InstantTooltips() {
     const show = (el: HTMLElement) => {
       const text = stash(el)
       current = el
-      setTip(text.trim() ? { text, rect: el.getBoundingClientRect() } : null)
+      const tone = el.getAttribute('data-tip-tone')
+      setTip(text.trim() ? { text, tone, rect: el.getBoundingClientRect() } : null)
       // The game may change the title while it is showing (a button that
       // becomes disabled says why): take the new one and redraw.
       observer = new MutationObserver(() => {
         if (!current || !current.hasAttribute('title')) return
         const next = stash(current)
-        setTip(next.trim() ? { text: next, rect: current.getBoundingClientRect() } : null)
+        setTip(next.trim() ? { text: next, tone: current.getAttribute('data-tip-tone'), rect: current.getBoundingClientRect() } : null)
       })
       observer.observe(el, { attributes: true, attributeFilter: ['title'] })
     }
@@ -133,6 +139,9 @@ export default function InstantTooltips() {
   }, [tip])
 
   if (!tip) return null
+  const newline = tip.text.indexOf('\n')
+  const heading = newline > 0 ? tip.text.slice(0, newline).trim() : null
+  const body = heading ? tip.text.slice(newline + 1).trim() : tip.text
   return (
     <div
       ref={boxRef}
@@ -140,7 +149,12 @@ export default function InstantTooltips() {
       className="pointer-events-none fixed z-[200] max-w-[min(320px,calc(100vw-16px))] whitespace-pre-line rounded-md border border-line-strong bg-surface-panel px-2 py-1 text-[11px] leading-snug text-fg-primary shadow-lg shadow-shadow"
       style={{ left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? 'visible' : 'hidden' }}
     >
-      {tip.text}
+      {heading && (
+        <div className={`mb-1 border-b border-line-subtle/60 pb-1 text-[10px] font-bold uppercase tracking-wide ${tip.tone ?? 'text-fg-bright'}`}>
+          {heading}
+        </div>
+      )}
+      {body}
     </div>
   )
 }

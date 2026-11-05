@@ -20,7 +20,7 @@ import type { AllocationSummary } from '@/components/PointAllocation'
 import { ScrollEnd } from '@/components/game-interface/LayerShell'
 import RecentFights from '@/components/game-interface/panels/RecentFights'
 import { buildKillList, killRecordNote } from '@/lib/kill-list'
-import type { QuestsTab } from '@/components/game-interface/panels/QuestsPanel'
+import type { QuestsTab, BattleOutcome } from '@/components/game-interface/panels/QuestsPanel'
 
 import type { FilterTab } from '@/lib/inventory-categories'
 
@@ -37,8 +37,12 @@ interface CharPanelProps {
   onPointsSpent: (updatedPlayer: Player, summary: AllocationSummary) => void
   /** Wear one of the earned titles, or none (null). The server validates and the header follows. */
   onSetTitle?: (title: string | null) => void
-  /** Opens the Quests tab on a page: the Kill list from the Kills line, the Battle log from Recent fights. */
-  onOpenQuests?: (tab: QuestsTab) => void
+  /**
+   * Opens the Quests tab on a page: the Kill list from the Kills line, the
+   * Battle log from Recent fights, or the Battle log already filtered to
+   * one outcome (the Deaths line shows only the fights that were lost).
+   */
+  onOpenQuests?: (tab: QuestsTab, outcome?: BattleOutcome) => void
 }
 
 // Pets are named from the shared registry; the player carries only the slug.
@@ -84,36 +88,45 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
   const regen = useMemo(() => regenPerClick(player, inventory), [player, inventory])
   // Every running effect as a chip: regen, poison, buffs, wings — the original's buffBox row.
   const chips = useMemo(() => statusChips(player, inventory), [player, inventory])
-  const pt = player.physicalTraining ?? 0
+  // Training, drawn as its own pair of tiles under the core stats: it is a
+  // progression choice of the same weight, not a line in the record.
+  const pt = player.physicalTraining ?? 1
   const mt = player.mentalTraining ?? 0
+  const tp = player.tp ?? 0
   const sp = player.sp ?? 0
-  const records: Array<{ label: string; note?: string; value: string | number; tone?: string; action?: React.ReactNode }> = []
+  const records: Array<{ label: string; note?: string; value: string | number; tone?: string; bold?: boolean; action?: React.ReactNode }> = []
   if (sp > 0) {
     records.push({
       label: 'Skill Points',
       note: bookTab ? 'Spent in your book' : 'Waiting for a teacher',
       value: sp,
       tone: 'text-stat-mag',
+      bold: true,
       action:
         onOpenBook && bookTab ? (
           <BookLink nudge={canLearnSkill || canLearnSpell} disabled={!isLoggedIn} onClick={() => onOpenBook(bookTab)} />
         ) : undefined,
     })
   }
-  if (pt > 0) records.push({ label: 'Physical Training', note: `+${pt} HP per rest · +${1 + pt * 2} max HP per level`, value: pt, tone: 'text-resource-hp' })
-  if (mt > 0) records.push({ label: 'Mental Training', note: `+${mt} MP per rest · +${1 + mt * 2} max MP per level`, value: mt, tone: 'text-resource-mp' })
-  if ((player.currency ?? 0) > 0) records.push({ label: 'Gold', value: (player.currency ?? 0).toLocaleString(), tone: 'text-resource-gold' })
+  if ((player.clicks ?? 0) > 0) records.push({ label: 'Clicks', note: 'Actions taken', value: (player.clicks ?? 0).toLocaleString(), tone: 'text-fg-muted' })
   if (killModel.total > 0) {
     records.push({
       label: 'Kills',
       note: killRecordNote(killModel),
       value: killModel.total.toLocaleString(),
-      tone: 'text-status-error',
+      tone: 'text-status-success',
       action: onOpenQuests ? <RecordLink onClick={() => onOpenQuests('kill-list')}>Kill list</RecordLink> : undefined,
     })
   }
-  if ((player.clicks ?? 0) > 0) records.push({ label: 'Clicks', note: 'Actions taken', value: (player.clicks ?? 0).toLocaleString() })
-  if ((player.deaths ?? 0) > 0) records.push({ label: 'Deaths', value: (player.deaths ?? 0).toLocaleString(), tone: 'text-status-error' })
+  if ((player.deaths ?? 0) > 0) {
+    records.push({
+      label: 'Deaths',
+      note: 'Fights lost',
+      value: (player.deaths ?? 0).toLocaleString(),
+      tone: 'text-status-error',
+      action: onOpenQuests ? <RecordLink onClick={() => onOpenQuests('battle-log', 'LOSS')}>Battle log</RecordLink> : undefined,
+    })
+  }
   const avatarKey = player.uIcon || DEFAULT_PLAYER_AVATAR
   const avatarColor = player.uIconColor || DEFAULT_AVATAR_COLOR
   const coloredAvatarSvg = useColoredAvatar(avatarKey, avatarColor)
@@ -260,23 +273,28 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
                   </div>
 
                   <div className="space-y-3">
+                    <StatusStrip chips={chips} />
                     <VitalRow label="HP">
                       <VitalBar kind="hp" size="fat" self current={player.hp} max={player.hpMax} regen={{ amount: regen.hp, title: regen.hpTitle }} className="w-full" />
                     </VitalRow>
                     <VitalRow label="MP">
                       <VitalBar kind="mp" size="fat" current={player.mp} max={player.mpMax} regen={{ amount: regen.mp, title: regen.mpTitle }} className="w-full" />
                     </VitalRow>
-                    <StatusStrip chips={chips} />
-                    <VitalRow label="XP" aside={<span className="text-fg-secondary">need {xpRemaining.toLocaleString()}</span>}>
-                      <VitalBar
-                        kind="xp"
-                        size="fat"
-                        current={xpInLevel}
-                        max={xpRange}
-                        extra={<span className="text-resource-xp">· {xpPct}%</span>}
-                        title={`XP ${xpInLevel.toLocaleString()} of ${xpRange.toLocaleString()} this level · ${xpPct}%`}
-                        className="w-full"
-                      />
+                    {/* XP as a number, not a bar: the percent through the level leads, the count follows. */}
+                    <VitalRow label="XP">
+                      <span className="flex flex-col items-start gap-0.5" title={`XP ${xpInLevel.toLocaleString()} of ${xpRange.toLocaleString()} this level · ${xpPct}%`}>
+                        <span className="text-lg font-bold leading-none tabular-nums text-resource-xp">{xpPct}%</span>
+                        <span className="text-[11px] leading-none tabular-nums text-fg-secondary">
+                          {xpInLevel.toLocaleString()} / {xpRange.toLocaleString()}
+                          <span className="text-fg-muted"> · need {xpRemaining.toLocaleString()}</span>
+                        </span>
+                      </span>
+                    </VitalRow>
+                    {/* The purse, read with the vitals: the original's stat box kept gold beside HP, MP and XP. */}
+                    <VitalRow label="Gold">
+                      <span className="text-xs tabular-nums text-resource-gold" title="Gold carried">
+                        {(player.currency ?? 0).toLocaleString()}
+                      </span>
                     </VitalRow>
                   </div>
                 </div>
@@ -308,6 +326,27 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
               )}
             </div>
 
+            {/* Training: the two numbers behind every rest and every level's HP
+                and MP, drawn with the weight of the core stats. */}
+            <div className="space-y-1.5">
+              <div className="flex items-baseline gap-2">
+                <h4 className="text-xs font-semibold text-fg-secondary uppercase tracking-wide">Training</h4>
+                {tp > 0 && isLoggedIn && (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('char-points')?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
+                    className="ml-auto text-[11px] font-semibold text-status-success hover:underline underline-offset-2 focus:outline-none focus-visible:ring-1 focus-visible:ring-line-focus rounded-sm"
+                  >
+                    {tp} TP to spend ›
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <TrainingTile code="PT" name="Physical Training" value={pt} tone="text-resource-hp" perRest={`+${pt} HP per rest`} perLevel={`+${1 + pt * 2} max HP next level`} />
+                <TrainingTile code="MT" name="Mental Training" value={mt} tone="text-resource-mp" perRest={`+${mt} MP per rest`} perLevel={`+${1 + mt * 2} max MP next level`} />
+              </div>
+            </div>
+
             {/* The record: what has been trained and what has happened. A line
                 appears only once there is something to say on it, so a new
                 character is not shown a column of zeros. */}
@@ -321,7 +360,7 @@ export default function CharPanel({ player, onSwitchToInventory, onOpenBook, boo
                         <span className="block text-sm font-medium text-fg-primary">{record.label}</span>
                         {record.note && <span className="block truncate text-[11px] text-fg-muted">{record.note}</span>}
                       </dt>
-                      <dd className={`flex-shrink-0 text-base font-bold tabular-nums ${record.tone ?? 'text-fg-bright'}`}>{record.value}</dd>
+                      <dd className={`flex-shrink-0 text-sm tabular-nums ${record.bold ? 'font-bold' : 'font-normal'} ${record.tone ?? 'text-fg-bright'}`}>{record.value}</dd>
                       {record.action}
                     </div>
                   ))}
@@ -362,6 +401,26 @@ function BookLink({ nudge, disabled, onClick }: { nudge: boolean; disabled: bool
         Open book
       </button>
     </span>
+  )
+}
+
+/**
+ * One training stat as a tile in the Core Stats' shape: the code, the
+ * number in its vital's color, and the two things it does — what a rest
+ * restores and what each level adds (room-state rest, leveling-service).
+ */
+function TrainingTile({ code, name, value, tone, perRest, perLevel }: { code: string; name: string; value: number; tone: string; perRest: string; perLevel: string }) {
+  return (
+    <div
+      className="rounded-xl border border-line-subtle/40 bg-surface-panel/60 px-2 py-1.5 text-center"
+      title={`${name} · ${value}\n${perRest}.\n${perLevel}.\nRaised with Training Points.`}
+      data-tip-tone={tone}
+    >
+      <span className={`block text-xs uppercase tracking-wide leading-none ${tone}`}>{code}</span>
+      <span className={`mt-0.5 block text-base font-bold tabular-nums ${tone}`}>{value}</span>
+      <span className="block text-[11px] leading-tight text-fg-secondary">{perRest}</span>
+      <span className="block text-[11px] leading-tight text-fg-muted">{perLevel}</span>
+    </div>
   )
 }
 
