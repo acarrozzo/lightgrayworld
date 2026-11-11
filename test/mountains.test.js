@@ -123,7 +123,8 @@ test('every slug a Mountains table can produce is a defined enemy, ladders inclu
       assert.ok(getEnemy(slug), `${roomId} can spawn "${slug}", which does not exist`)
     }
   }
-  assert.deepEqual(roomEnemies.ROOM_ENEMIES['619'].enemies, ['gatekeeper'])
+  // The Gatekeeper's bridge is a one-entry roll at 100% (a lair, since 5 Nov 2026), never static.
+  assert.deepEqual(roomEnemies.ROOM_ENEMIES['619'], { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'gatekeeper', weight: 1 }] })
 })
 
 test('Whirlwind sums six ATT rolls and Firebreath is 3–5 gouts at full ATT, pure', () => {

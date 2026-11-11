@@ -12,6 +12,8 @@
  *   talker   talkers.js `sets`              — an NPC with no quest and no shop
  *   idle /   quest-givers.json `idleDialogs` — a quest giver's Chat button,
  *   aside    and `asides`                     the same sets Talk draws on
+ *   stir     lair-lines.js                  — a lair while its boss is about:
+ *                                             a rest or a search serves one
  *
  * The source tag `<roomId> · <speaker> · <set> #<n>` names the data row a
  * line came from, so a line read in the feed can be found and edited. The
@@ -25,6 +27,8 @@ const { SHOPS, listKeeperShops } = require('./shops')
 const { OVERHEARD, listOverheardRooms } = require('./overheard')
 const { listTalkers } = require('./talkers')
 const { GIVERS } = require('./quest-registry')
+const { lairStirLines } = require('./lair-lines')
+const { BOSSES } = require('./bosses.generated')
 
 /** The action a giver's Chat button sends: `chatAction` if authored, else "chat with …". */
 function chatActionForGiver(giver) {
@@ -77,6 +81,10 @@ function listLineSets() {
     for (const entry of g.asides || []) {
       sets.push({ roomId: g.roomId, speaker: g.name, speakerId: giverId, set: 'aside', action, lines: entry.lines, gate: entry.ifCompleted ?? null, shop: null })
     }
+  }
+  for (const boss of BOSSES) {
+    if (!boss.rank || !boss.lair) continue
+    sets.push({ roomId: boss.lair, speaker: boss.name, speakerId: boss.slug, set: 'stir', action: null, lines: lairStirLines(boss.slug, boss.name), gate: null, shop: null })
   }
   return sets
 }

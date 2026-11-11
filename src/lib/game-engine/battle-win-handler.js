@@ -187,6 +187,10 @@ async function runWithRetry(fn, label) {
 async function persistBattleWin(playerId, battleState, rewards) {
   const { xpAwarded, goldAwarded, drops } = rewards
   const enemy = battleState.enemy
+  // The kill's moment, as the victory already told the client (resolveVictory
+  // stamps `killedAt` on the battle state), so the rest clock in the row and
+  // the one on the victory card agree to the millisecond.
+  const killedAt = new Date(battleState.killedAt ?? Date.now())
 
   const { droppedItems, levelUp, firstKill } = await runWithRetry(
     () =>
@@ -204,10 +208,12 @@ async function persistBattleWin(playerId, battleState, rewards) {
           // The row comes back with its count, so "first kill" is read off the
           // write itself rather than off the process-local kill set, which a
           // second socket or a restart may not have loaded.
+          // `lastKilledAt` is the boss rest clock (game-data/boss-rest.js):
+          // written for every kill, read for the ranked ones with a lair.
           const killRow = await tx.killList.upsert({
             where: { userId_monster: { userId: playerId, monster: enemy.slug } },
-            update: { kills: { increment: 1 } },
-            create: { userId: playerId, monster: enemy.slug, kills: 1 },
+            update: { kills: { increment: 1 }, lastKilledAt: killedAt },
+            create: { userId: playerId, monster: enemy.slug, kills: 1, lastKilledAt: killedAt },
           })
 
           const granted = []
@@ -269,7 +275,7 @@ async function persistBattleWin(playerId, battleState, rewards) {
 
   // The kill is committed: the spawn tables' kill set and the room's own
   // after-win rule (the toll) see it from the next roll onward.
-  noteKill(playerId, enemy.slug)
+  noteKill(playerId, enemy.slug, killedAt.getTime())
   ROOM_WIN_HOOKS[battleState.roomId]?.(playerId, enemy.slug)
 
   // A landing this kill opens. Non-fatal like the read-back below: the win is

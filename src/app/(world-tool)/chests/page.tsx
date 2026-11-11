@@ -15,10 +15,16 @@ export const metadata = {
     'Every chest in Light Gray RPG — the one-time gold chests and the repeatable ones — with their loot tables, odds and rooms.',
 }
 
-const { CHEST_LOOT, REPEATABLE_CHEST_LOOT } = require('@/lib/game-engine/room-action-handlers') as {
+const { CHEST_LOOT, REPEATABLE_CHEST_LOOT, BOSS_CHEST_LOOT } = require('@/lib/game-engine/room-action-handlers') as {
   CHEST_LOOT: Record<string, Record<string, ChestLoot>>
   REPEATABLE_CHEST_LOOT: RepeatableChest[]
+  BOSS_CHEST_LOOT: BossChest[]
 }
+const { getEnemy } = require('@/lib/game-data/enemies') as {
+  getEnemy: (slug: string) => { name: string; level: number } | undefined
+}
+const { restMinutesFor } = require('@/lib/game-data/boss-rest') as { restMinutesFor: (enemy: unknown) => number }
+const { formatRestMinutes } = require('@/lib/game-data/boss-rest') as { formatRestMinutes: (m: number) => string }
 const { GOLD_CHEST_FLAG_BY_ROOM } = require('@/lib/game-data/gold-chests') as {
   GOLD_CHEST_FLAG_BY_ROOM: Record<string, string>
 }
@@ -27,6 +33,18 @@ type ChestItem = { itemSlug: string; quantity?: number; highlighted?: boolean }
 type ChestLoot = { label: string; xp?: number; items?: ChestItem[]; randomItems?: ChestItem[] }
 type PoolEntry = ChestItem & { quantityMin?: number; quantityMax?: number }
 type RepeatableChest = { roomId: string; action: string; label: string; pools?: PoolEntry[][] }
+type BossChest = {
+  roomId: string
+  bossSlug: string
+  action: string
+  label: string
+  goldMin: number
+  goldMax: number
+  xp: number
+  always: PoolEntry[]
+  pools: PoolEntry[][]
+  chance: (PoolEntry & { oneIn: number })[]
+}
 
 const oneTime = Object.entries(CHEST_LOOT).flatMap(([roomId, actions]) =>
   Object.entries(actions).map(([action, chest]) => ({ roomId, action, chest }))
@@ -43,11 +61,12 @@ const slugs = Array.from(
     ...REPEATABLE_CHEST_LOOT.flatMap((c) =>
       (c.pools ?? []).flat().map((e) => e.itemSlug)
     ),
+    ...BOSS_CHEST_LOOT.flatMap((c) => [...c.always, ...c.pools.flat(), ...c.chance].map((e) => e.itemSlug)),
   ].filter((s): s is string => typeof s === 'string' && s.length > 0))
 )
 
 const roomIds = Array.from(
-  new Set([...oneTime.map((c) => c.roomId), ...REPEATABLE_CHEST_LOOT.map((c) => c.roomId)])
+  new Set([...oneTime.map((c) => c.roomId), ...REPEATABLE_CHEST_LOOT.map((c) => c.roomId), ...BOSS_CHEST_LOOT.map((c) => c.roomId)])
 )
 
 // Templates and room names for every chest, cached in production: see
@@ -74,10 +93,10 @@ export default async function ChestsPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-fg-bright">Chests</h1>
         <p className="mt-1 max-w-4xl text-sm text-fg-secondary">
-          {oneTime.length} one-time gold chests and {REPEATABLE_CHEST_LOOT.length} repeatable
-          chests. A gold chest can be opened once per character and is remembered by a flag on
+          {oneTime.length} one-time gold chests, {REPEATABLE_CHEST_LOOT.length} repeatable
+          chests and {BOSS_CHEST_LOOT.length} Boss Chests. A gold chest can be opened once per character and is remembered by a flag on
           the player row; a repeatable chest rolls one entry from each of its pools every time
-          it is opened.
+          it is opened; a Boss Chest opens once per kill of its boss, while the boss is defeated, and never gives XP.
         </p>
       </header>
 
@@ -117,6 +136,50 @@ export default async function ChestsPage() {
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-3 text-lg font-semibold text-fg-bright">Boss Chests — once per kill</h2>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {BOSS_CHEST_LOOT.map((chest) => {
+            const boss = getEnemy(chest.bossSlug)
+            return (
+              <article key={`${chest.roomId}:${chest.action}`} className="overflow-hidden rounded-lg border border-line-subtle bg-surface-panel/30">
+                <div className="flex flex-wrap items-center gap-2 border-b border-line-subtle bg-surface-panel/70 px-3 py-2">
+                  <span className="font-semibold text-fg-bright">{chest.label}</span>
+                  {boss && <Tag>cooldown {formatRestMinutes(restMinutesFor(boss))}</Tag>}
+                  {chest.goldMax > 0 && <span className="text-xs text-resource-gold">{chest.goldMin}–{chest.goldMax} gold</span>}
+                  <EntityLink href={roomHref(chest.roomId)} className="ml-auto font-mono text-xs">
+                    #{chest.roomId} {roomName.get(chest.roomId) ?? ''}
+                  </EntityLink>
+                </div>
+                <div className="space-y-2 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wide text-fg-disabled">
+                    Command: <span className="font-mono text-fg-muted">{chest.action}</span>
+                  </p>
+                  {chest.always.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-[10px] uppercase tracking-wide text-fg-disabled">Always</p>
+                      <LootList items={chest.always} bySlug={bySlug} />
+                    </div>
+                  )}
+                  {chest.pools.map((pool, i) => (
+                    <div key={i}>
+                      <p className="mb-1 text-[10px] uppercase tracking-wide text-fg-disabled">Pool {i + 1} — one of {pool.length}</p>
+                      <LootList items={pool} bySlug={bySlug} />
+                    </div>
+                  ))}
+                  {chest.chance.map((entry) => (
+                    <div key={entry.itemSlug}>
+                      <p className="mb-1 text-[10px] uppercase tracking-wide text-fg-disabled">1 in {entry.oneIn}</p>
+                      <LootList items={[entry]} bySlug={bySlug} />
+                    </div>
+                  ))}
+                </div>
+              </article>
+            )
+          })}
         </div>
       </section>
 

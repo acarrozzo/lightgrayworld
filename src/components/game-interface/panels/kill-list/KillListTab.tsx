@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCountdown } from '@/components/game-interface/useCountdown'
+import { formatCountdown } from '@/lib/boss-rest-client'
 import { ChevronDown } from 'lucide-react'
 import { useGameStore } from '@/lib/game-state'
 import {
@@ -325,6 +327,13 @@ function KillBoxView({ box, folded, onToggle, onOpen }: { box: KillBox; folded: 
  * what happened ("killed you ×2"). Unknown: the gray name and nothing else,
  * the original's dark-gray line.
  */
+/** "4:32" in the clock's blue: this boss is down for you until then. */
+function RowClock({ until }: { until: number }) {
+  const left = useCountdown(until)
+  if (left <= 0) return null
+  return <span className="text-[10px] font-semibold tabular-nums text-status-info" title="Resting: back for you in this long">{formatCountdown(left)}</span>
+}
+
 function KillRowView({ row, onOpen }: { row: KillRow; onOpen: (slug: string) => void }) {
   const { enemy } = row
   const killed = row.state === 'killed'
@@ -336,7 +345,10 @@ function KillRowView({ row, onOpen }: { row: KillRow; onOpen: (slug: string) => 
       {enemy.rare && <RareChip dim={!killed} />}
       <span className={`truncate ${nameClass}`} style={killed ? toneStyle(enemy.nameTone) : undefined}>{enemy.name}</span>
       {killed ? (
-        <span className="ml-auto shrink-0 font-bold tabular-nums text-resource-gold">{row.kills.toLocaleString()}</span>
+        <span className="ml-auto flex shrink-0 items-center gap-1.5">
+          {row.restingUntil != null && <RowClock until={row.restingUntil} />}
+          <span className="font-bold tabular-nums text-resource-gold">{row.kills.toLocaleString()}</span>
+        </span>
       ) : met ? (
         <span className="ml-auto flex shrink-0 items-center gap-2 text-[10px]">
           {row.losses > 0 && <span className="text-status-error">killed you ×{row.losses}</span>}

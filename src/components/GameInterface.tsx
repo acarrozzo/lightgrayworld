@@ -169,6 +169,7 @@ export default function GameInterface() {
   const setKillMarks = useGameStore((s) => s.setKillMarks)
   const bumpKillMark = useGameStore((s) => s.bumpKillMark)
   const incrementKill = useGameStore((s) => s.incrementKill)
+  const clearKillTime = useGameStore((s) => s.clearKillTime)
   const logout = useGameStore((s) => s.logout)
   const setBattleStarted = useGameStore((s) => s.setBattleStarted)
   const updateBattleTurn = useGameStore((s) => s.updateBattleTurn)
@@ -1925,6 +1926,7 @@ export default function GameInterface() {
       else if (action === 'equip_item') eventType = 'equip'
       else if (action === 'auto_equip') eventType = 'equip'
       else if (action === 'enemy_spawn') eventType = 'enemy-spawn'
+      else if (action === 'boss_rest' || action === 'boss_rest_reset') eventType = 'boss-rest'
       else if (action === 'discovery') eventType = 'discovery'
       else if (action === 'pet') eventType = 'pet'
       else if (action) eventType = 'action-feedback'
@@ -2079,6 +2081,21 @@ export default function GameInterface() {
         if (payload?.data?.enemy) {
           setRoomEnemy(payload.data.enemy)
         }
+      }
+
+      // The Boss Chest was emptied: the box's button turns to "emptied".
+      if (payload?.data?.bossChest?.opened) {
+        const room = useGameStore.getState().currentRoom
+        const rest = room?.bossRest
+        if (room && rest && rest.chest && rest.slug === payload.data.bossChest.bossSlug) {
+          setCurrentRoom({ ...room, bossRest: { ...rest, chest: { ...rest.chest, opened: true } } })
+        }
+      }
+      // The test reset cleared your clock: the room is as it was seeded
+      // again, which only the server knows, so load it afresh.
+      if (payload?.data?.bossRestReset?.slug) {
+        clearKillTime(payload.data.bossRestReset.slug)
+        loadRoomDataRef.current()
       }
 
       // Handle quest chain toast (show even if modal is open)
@@ -2630,7 +2647,22 @@ export default function GameInterface() {
     const cleanupVictory = socketHandlers.onBattleVictory((payload) => {
       const applyVictory = () => {
         if (payload.summary) setBattleResult(payload.summary)
-        if (payload.summary?.enemySlug) incrementKill(payload.summary.enemySlug)
+        // The kill's moment as the server counted it, so the Kill List's
+        // clock and the room's agree.
+        const bossRest = payload.bossRest ?? payload.summary?.bossRest ?? null
+        const killedAt = bossRest ? bossRest.restingUntil - bossRest.restMinutes * 60 * 1000 : Date.now()
+        if (payload.summary?.enemySlug) incrementKill(payload.summary.enemySlug, killedAt)
+        // A lair boss rests from this kill: its strip replaces the enemy box
+        // here, and the room reads SAFE for you until it is back.
+        if (bossRest) {
+          const room = useGameStore.getState().currentRoom
+          if (room && room.roomId === bossRest.lair) {
+            setCurrentRoom({ ...room, bossRest, isSafe: true })
+            // And the server's own picture of the lair, so the box can never
+            // miss a kill whatever else lands on the room in the meantime.
+            loadRoomDataRef.current()
+          }
+        }
         clearBattle()
         // A probabilistic room is empty again after the kill; a static room's
         // enemy is always there and stays on screen.
@@ -3565,6 +3597,25 @@ export default function GameInterface() {
   const [ledgerOpen, setLedgerOpen] = useState(false)
   const openLedger = useCallback(() => setLedgerOpen(true), [])
   const closeLedger = useCallback(() => setLedgerOpen(false), [])
+
+  // The resting boss got back up on this page's clock: say so, and let the
+  // server redraw the room (the strip goes, the danger line reads danger
+  // again, the next turn action rolls).
+  const handleBossRestEnded = useCallback(() => {
+    const room = useGameStore.getState().currentRoom
+    const name = room?.bossRest?.name
+    if (name) {
+      appendWorldFeed({
+        type: 'action',
+        isSelf: true,
+        eventType: 'boss-rest',
+        outcome: 'info',
+        message: `Something stirs. The ${name} is back, and this room is dangerous again.`,
+        ts: Date.now(),
+      })
+    }
+    loadRoomDataRef.current()
+  }, [appendWorldFeed])
   useEffect(() => {
     if (!battle.isInBattle && !battleResult) setLedgerOpen(false)
   }, [battle.isInBattle, battleResult])
@@ -4076,6 +4127,7 @@ export default function GameInterface() {
       isInBattle={battle.isInBattle}
       quests={quests}
       killList={killList}
+      onBossRestEnded={handleBossRestEnded}
     />
   ) : null
 

@@ -20,7 +20,9 @@ async function handleGetKillList(request: AuthenticatedRequest) {
       prisma.killList.findMany({
         where: { userId: request.user.id },
         orderBy: { kills: 'desc' },
-        select: { id: true, monster: true, kills: true },
+        // `lastKilledAt` is the boss rest clock: with the browser's boss copy
+        // and game-data/boss-rest.js the client works out which lairs rest.
+        select: { id: true, monster: true, kills: true, lastKilledAt: true },
       }),
       prisma.battleLog.groupBy({
         by: ['enemySlug', 'outcome'],
@@ -35,7 +37,7 @@ async function handleGetKillList(request: AuthenticatedRequest) {
       else mark.fled += row._count._all
       marksBySlug.set(row.enemySlug, mark)
     }
-    return NextResponse.json({ success: true, kills, marks: [...marksBySlug.values()] })
+    return NextResponse.json({ success: true, kills, marks: [...marksBySlug.values()], now: Date.now() })
   } catch (error) {
     console.error('Get kill list error:', error)
     return NextResponse.json({ success: false, error: 'Failed to get kill list' }, { status: 500 })

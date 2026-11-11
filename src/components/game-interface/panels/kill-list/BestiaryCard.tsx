@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+import { useCountdown } from '@/components/game-interface/useCountdown'
+import { formatCountdown, formatRestMinutes, restMinutesForSlug } from '@/lib/boss-rest-client'
 import Icon from '@/components/Icon'
+import { resolveItemIcon } from '@/lib/item-actions'
 import { PlayerAvatar } from '@/components/player/PlayerRow'
 import { KILL_TIERS, toneStyle, type KillBox, type KillRow } from '@/lib/kill-list'
 import { RareChip } from './KillListTab'
@@ -32,6 +35,10 @@ interface EnemyRecord {
   enemy: { slug: string; description: string; traits: string[]; drops: RecordDrop[] }
   record: {
     kills: number
+    /** The rest clock: how long it rests, and when you can fight it again while it does. */
+    restMinutes?: number
+    restingUntil?: number | null
+    now?: number
     firstKillAt: string | null
     firstKillLevel: number | null
     fastestWin: number | null
@@ -66,6 +73,13 @@ interface BestiaryCardProps {
 
 const fmtDay = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—')
 
+/** "NEXT 4:32": the boss is down for you until then. */
+function RestingTag({ until }: { until: number }) {
+  const left = useCountdown(until)
+  if (left <= 0) return null
+  return <Tag tone="text-status-info border-status-info/50 tabular-nums">next {formatCountdown(left)}</Tag>
+}
+
 function Tag({ children, tone = 'text-fg-secondary border-line-strong/60' }: { children: React.ReactNode; tone?: string }) {
   return <span className={`rounded-[3px] border px-1.5 text-[9px] font-bold uppercase tracking-[0.06em] leading-[16px] ${tone}`}>{children}</span>
 }
@@ -98,6 +112,15 @@ export default function BestiaryCard({ row, box, getAuthHeaders, onBack, onWatch
   }, [enemy.slug, getAuthHeaders])
 
   const kills = data?.record.kills ?? row.kills
+  // The rest clock: the registry says how long, the record says until when
+  // (as the server's own count, so this device's clock is not trusted).
+  const restMinutes = restMinutesForSlug(enemy.slug)
+  const restDeadline = useMemo(() => {
+    const until = data?.record.restingUntil
+    if (until == null) return null
+    const serverNow = data?.record.now ?? Date.now()
+    return Date.now() + Math.max(0, until - serverNow)
+  }, [data?.record.restingUntil, data?.record.now])
 
   return (
     <div className="space-y-3">
@@ -136,6 +159,8 @@ export default function BestiaryCard({ row, box, getAuthHeaders, onBack, onWatch
             {enemy.isAggressive && <Tag>Aggressive</Tag>}
             {enemy.isFlying && <Tag>Flying</Tag>}
             {enemy.lair && <Tag tone="text-hue-sky border-hue-sky/50">Lair · teleport open</Tag>}
+            {restMinutes > 0 && <Tag tone="text-status-info border-status-info/50">Cooldown {formatRestMinutes(restMinutes)}</Tag>}
+            {restDeadline != null && <RestingTag until={restDeadline} />}
             {data?.enemy.traits.map((t) => <Tag key={t}>{t}</Tag>)}
           </div>
           {data?.enemy.description && <p className="text-[12px] leading-snug text-fg-secondary">{data.enemy.description}</p>}
@@ -200,7 +225,7 @@ export default function BestiaryCard({ row, box, getAuthHeaders, onBack, onWatch
                     {had.map((drop, i) => (
                       <li key={`${drop.slug}-${i}`} className="flex min-h-[30px] items-center gap-2 text-[12px]">
                         <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center" aria-hidden="true">
-                          {drop.icon ? <Icon name={drop.icon} size={16} className="text-fg-secondary" /> : <span className="h-3 w-3 rounded-[3px] bg-surface-raised" />}
+                          <Icon name={resolveItemIcon(drop.icon ? { icon: drop.icon } : null, drop.slug)} size={16} className="text-fg-secondary" />
                         </span>
                         <span className="truncate text-fg-primary">{drop.name}{drop.qty}</span>
                         <span className="ml-auto shrink-0 text-[11px] tabular-nums text-fg-muted">{drop.chance}</span>
@@ -219,10 +244,10 @@ export default function BestiaryCard({ row, box, getAuthHeaders, onBack, onWatch
         )}
       </section>
 
-      {/* First to fell */}
+      {/* First to win */}
       <section className="rounded-xl border border-line-subtle/60 bg-surface-panel/60 p-3">
         <div className="mb-1.5 flex items-baseline gap-2">
-          <h3 className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted">First to fell</h3>
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.06em] text-fg-muted">First to win</h3>
           <span className="ml-auto text-[10px] text-fg-muted">lowest level at the kill, then lowest XP</span>
         </div>
         {!data ? (

@@ -10,6 +10,9 @@ const { getEnemy } = require('../game-data/enemies')
 const { getEnemyTraits } = require('../game-data/enemy-traits')
 const { isProbabilistic } = require('../game-data/room-enemies')
 const { getTravelerByEnemySlug } = require('../game-data/travelers')
+const { noteKill } = require('./services/kill-list-service')
+const { restMinutesFor, formatRestMinutes } = require('../game-data/boss-rest')
+const { isTestResetEnabled } = require('./services/boss-rest-service')
 const travelerState = require('./traveler-state')
 const { getRoomEnemies } = require('../game-data/room-enemies')
 const { RESPAWN_ROOM_ID } = require('../game-data/constants')
@@ -615,6 +618,35 @@ async function resolveVictory(playerId, roomState, battleState, turnResult, { ac
   if (isProbabilistic(roomState.roomId)) {
     roomState.setPresentEnemy(playerId, null, { grace: true })
   }
+  // A ranked enemy with a lair rests from this moment (game-data/boss-rest.js).
+  // The mirror learns it now, before the row commits, so the very next roll
+  // in the lair already strips it; the row's write follows in persistBattleWin
+  // with the same timestamp. The card and the feed say how long.
+  const killedAt = Date.now()
+  battleState.killedAt = killedAt
+  const restMinutes = restMinutesFor(battleState.enemy)
+  let bossRest = null
+  if (restMinutes > 0) {
+    // The same shape the room payload carries (services/boss-rest-service), so
+    // the client can set the lair's box from the victory alone; the Boss Chest is
+    // fresh by definition — this kill just filled it.
+    const { BOSS_CHEST_LOOT } = require('./room-action-handlers')
+    const chest = BOSS_CHEST_LOOT.find((c) => c.bossSlug === battleState.enemySlug) || null
+    bossRest = {
+      slug: battleState.enemySlug,
+      name: battleState.enemyName,
+      level: battleState.enemy.level,
+      rank: battleState.enemy.rank,
+      lair: battleState.enemy.lair,
+      restMinutes,
+      restingUntil: killedAt + restMinutes * 60 * 1000,
+      secondsRemaining: restMinutes * 60,
+      totalSeconds: restMinutes * 60,
+      chest: chest ? { action: chest.action, label: chest.label, opened: false } : null,
+      testReset: isTestResetEnabled(),
+    }
+    noteKill(playerId, battleState.enemySlug, killedAt)
+  }
   const slainTraveler = getTravelerByEnemySlug(battleState.enemySlug)
   if (slainTraveler) travelerState.onTravelerKilled(slainTraveler.id, roomState.roomId)
 
@@ -654,6 +686,8 @@ async function resolveVictory(playerId, roomState, battleState, turnResult, { ac
           ...(mpAfter ? { playerMp: mpAfter.mp, playerMpMax: mpAfter.mpMax } : {}),
           message: winMsg,
           clearRoomEnemies: isProbabilistic(roomState.roomId),
+          // The boss's rest, for the card's line and the kill list's clock.
+          ...(bossRest ? { bossRest } : {}),
           summary: {
             outcome: 'WIN',
             enemyName: battleState.enemyName,
@@ -669,9 +703,12 @@ async function resolveVictory(playerId, roomState, battleState, turnResult, { ac
             dropDetails,
             multiplayerBonus: battleState.multiplayerBonusUsed,
             lastTurn: battleState.lastTurnResult,
+            // The card's line: "The Gator is down for 5 minutes."
+            ...(bossRest ? { bossRest } : {}),
           },
         },
       },
+      ...(bossRestEvent(roomState, bossRest) ? [bossRestEvent(roomState, bossRest)] : []),
     ],
     broadcastEvents: [
       {
@@ -680,6 +717,25 @@ async function resolveVictory(playerId, roomState, battleState, turnResult, { ac
         payload: roomBroadcast(player, makeFeedback(action, 'info', `${player?.username ?? 'Someone'} defeated the ${battleState.enemyName}!`)),
       },
     ],
+  }
+}
+
+/**
+ * The rest's own feed line, after the victory's: "The Gator is down. The
+ * marsh is safe for 5 minutes." Only when the kill was in the lair (a boss
+ * that strayed — none today — would rest without the room being yours).
+ */
+function bossRestEvent(roomState, bossRest) {
+  if (!bossRest || bossRest.lair !== roomState.roomId) return null
+  const length = formatRestMinutes(bossRest.restMinutes)
+  return {
+    event: 'action:feedback',
+    // `roomPatch` is the client's generic room merge: the lair reads SAFE
+    // and shows the clock from this line on, before the victory settles.
+    payload: makeFeedback('boss_rest', 'info', `The ${bossRest.name} is down. This room is safe to you for ${length}.`, {
+      bossRest,
+      roomPatch: { bossRest, isSafe: true },
+    }),
   }
 }
 
@@ -792,13 +848,16 @@ async function executeStartBattle(action, playerId, roomState) {
     if (!roomConfig || !roomConfig.enemies.includes(enemySlug)) {
       return errorResult('start_battle', 'That enemy is not here.')
     }
-    // A boss that stands in plain sight but will not be fought until the
-    // player has earned it — the Master Temple's Guardian behind its four
-    // tests. Declared on the room's spawn table so the rule lives beside the
-    // enemy it protects, and checked here so no path into a fight skips it.
-    if (roomConfig.challenge && !(await meetsChallenge(playerId, roomConfig.challenge))) {
-      return errorResult('start_battle', roomConfig.challenge.message || 'You cannot fight that yet.')
-    }
+  }
+  // A boss that stands in plain sight but will not be fought until the
+  // player has earned it — the Master Temple's Guardian behind its four
+  // tests. Declared on the room's spawn table so the rule lives beside the
+  // enemy it protects, and checked here so no path into a fight skips it.
+  // The Guardian rolls into the slot like any lair boss now (5 Nov 2026); the
+  // gate is on the swing, as the original's "You can't challenge" was.
+  const challenge = getRoomEnemies(roomState.roomId)?.challenge
+  if (challenge && !traveler && !(await meetsChallenge(playerId, challenge))) {
+    return errorResult('start_battle', challenge.message || 'You cannot fight that yet.')
   }
 
   const enemy = getEnemy(enemySlug)

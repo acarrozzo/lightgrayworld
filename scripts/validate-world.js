@@ -351,18 +351,30 @@ for (const config of Object.values(ROOM_ENEMIES)) {
   for (const slug of listRoomEnemySlugs(config)) spawnedEnemies.add(slug)
 }
 
-// Bosses: `rank` is one of two words, a lair is a seeded room the boss actually
-// spawns in, and only a boss has one (a miniboss rolls in; it has no lair).
+// Bosses: `rank` is one of two words; a lair is a seeded room where the ranked
+// enemy rolls alone (a one-entry probabilistic table — no ranked enemy is static,
+// so the rest clock can strip it from the roll). Only a ranked enemy has a lair.
 for (const enemy of ENEMIES) {
   if (enemy.rank === undefined && enemy.lair === undefined) continue
   if (enemy.rank !== 'boss' && enemy.rank !== 'miniboss') {
     err('bosses', `${enemy.slug} has rank "${enemy.rank}" — use 'boss' or 'miniboss'`)
   }
   if (enemy.lair === undefined) continue
-  if (enemy.rank !== 'boss') err('bosses', `${enemy.slug} has a lair but is not a boss`)
-  if (!isRoom(enemy.lair)) err('bosses', `${enemy.slug}'s lair "${enemy.lair}" is not a seeded room`)
-  else if (!listRoomEnemySlugs(ROOM_ENEMIES[enemy.lair]).includes(enemy.slug)) {
-    err('bosses', `${enemy.slug} never spawns in its lair ${enemy.lair}`)
+  if (!enemy.rank) err('bosses', `${enemy.slug} has a lair but no rank`)
+  if (!isRoom(enemy.lair)) { err('bosses', `${enemy.slug}'s lair "${enemy.lair}" is not a seeded room`); continue }
+  const lairTable = ROOM_ENEMIES[enemy.lair]
+  const lairSlugs = listRoomEnemySlugs(lairTable)
+  if (!lairSlugs.includes(enemy.slug)) err('bosses', `${enemy.slug} never spawns in its lair ${enemy.lair}`)
+  else if (!lairTable.probabilistic) err('bosses', `${enemy.slug}'s lair ${enemy.lair} is a static room — make it a one-entry roll`)
+  else if (lairSlugs.length !== 1) err('bosses', `${enemy.slug}'s lair ${enemy.lair} also rolls ${lairSlugs.filter((s) => s !== enemy.slug).join(', ')} — a lair is the boss's alone`)
+}
+// No ranked enemy stands in a static room anywhere: the rest clock only knows
+// how to strip a roll.
+for (const [roomId, config] of Object.entries(ROOM_ENEMIES)) {
+  if (config.probabilistic) continue
+  for (const slug of config.enemies) {
+    const enemy = ENEMIES.find((e) => e.slug === slug)
+    if (enemy?.rank) err('bosses', `${slug} is ranked but stands static in ${roomId}`)
   }
 }
 // Kill List: every enemy sits in one of the 27 boxes, and a name tone is one

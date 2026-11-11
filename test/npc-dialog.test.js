@@ -99,14 +99,16 @@ test('lines: every authored set has a room, a speaker, a kind and non-empty stri
   const sets = lines.listLineSets()
   assert.ok(sets.length > 0)
   for (const s of sets) {
-    assert.ok(/^\d{3}[a-z]*$/.test(s.roomId), `room id ${s.roomId}`)
+    // Mine lairs are "311-05" and the like (the stir sets reach them).
+    assert.ok(/^\d{3}[a-z]*(-\d{2})?$/.test(s.roomId), `room id ${s.roomId}`)
     assert.ok(s.speaker && s.speakerId, `speaker on ${s.roomId}`)
-    assert.ok(['keeper', 'listen', 'talker', 'idle', 'aside'].includes(s.set))
+    assert.ok(['keeper', 'listen', 'talker', 'idle', 'aside', 'stir'].includes(s.set))
     assert.ok(s.lines.length > 0, `${s.roomId} ${s.speakerId} ${s.set} has lines`)
     for (const l of s.lines) assert.ok(typeof l === 'string' && l.trim(), `${s.roomId} ${s.speakerId} ${s.set}: empty line`)
   }
-  // Every keeper and listen set has a button; giver sets share the giver's chat action.
-  for (const s of sets) assert.ok(s.action, `${s.roomId} ${s.speakerId} ${s.set} has an action`)
+  // Every keeper and listen set has a button; giver sets share the giver's chat
+  // action. A lair's stir set is the one nobody presses: the boss box cycles it.
+  for (const s of sets) if (s.set !== 'stir') assert.ok(s.action, `${s.roomId} ${s.speakerId} ${s.set} has an action`)
 })
 
 // ── cycling ──────────────────────────────────────────────────────────────────

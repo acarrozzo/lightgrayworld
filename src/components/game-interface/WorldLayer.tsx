@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { restingUntilBySlug as restingUntilBySlug_ } from '@/lib/boss-rest-client'
 import { Eye, EyeOff, Globe, Map as MapIcon, Maximize2, Sparkles } from 'lucide-react'
 import { useGameStore, type Player } from '@/lib/game-state'
 import { foundSheetIds, type TeleportContext } from '@/lib/world-atlas'
@@ -165,6 +166,8 @@ export default function WorldLayer({
   const killList = useGameStore((s) => s.killList)
   const killedSlugs = useMemo(() => killList.filter((entry) => entry.kills > 0).map((entry) => entry.monster), [killList])
   const defeatedBosses = useMemo(() => defeatedBossTeleports(killedSlugs), [killedSlugs])
+  // Which beaten bosses are down for you right now, for the rows' chips.
+  const restingUntilBySlug = useMemo(() => restingUntilBySlug_(killList), [killList])
   const teleport: TeleportContext = useMemo(
     () => ({ discoveredTeleports, killedSlugs, memberships }),
     [discoveredTeleports, killedSlugs, memberships],
@@ -281,6 +284,7 @@ export default function WorldLayer({
           onTeleport={onTeleport}
           onShowOnMap={showOnMap}
           foundMapIds={foundMapIds}
+          restingUntilBySlug={restingUntilBySlug}
         />
       </div>
     </div>

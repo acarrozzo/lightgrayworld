@@ -14,6 +14,8 @@ interface LedgerRoom {
   roomId?: string
   dangerLevel?: number | null
   isSafe?: boolean | null
+  /** The lair's boss defeated for you: named after SAFE. */
+  bossRest?: { name: string } | null
 }
 
 /** "danger 9 · HIGH". The word in its rung's colour; the number always beside it. */
@@ -26,6 +28,9 @@ export function DangerLine({ room, player }: { room: LedgerRoom | null; player: 
       <span className="text-fg-primary tabular-nums">{verdict.level}</span>
       <span className="text-fg-muted"> · </span>
       <span className={`font-semibold ${DANGER_TONE_CLASS[verdict.tone]}`}>{verdict.label}</span>
+      {room.bossRest && (
+        <span className="text-fg-muted"> · {room.bossRest.name.toLowerCase()} defeated</span>
+      )}
     </span>
   )
 }

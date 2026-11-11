@@ -1,6 +1,8 @@
 'use client'
 
 import { BattleState, BattleResult, BattleSkillUse, BattleSpellCast, BattleSupportSpell, InventoryItem, Player, useGameStore } from '@/lib/game-state'
+import type { BossRestView } from '@/lib/types/room'
+import { formatRestMinutes } from '@/lib/boss-rest-client'
 import Icon from '@/components/Icon'
 import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 import { Compass as CompassIcon, Eye, LogOut } from 'lucide-react'
@@ -450,6 +452,28 @@ function FirstKillTag() {
  * no frame or banner of its own. Standalone it is the whole thing, as a
  * defeat always is.
  */
+/**
+ * The victory card's one line about the boss's rest (game-data/boss-rest.js):
+ * how long it is down, that its lair is safe, and that the Boss Chest is open.
+ */
+function BossRestLine({ bossRest, compact = false }: { bossRest: BossRestView; compact?: boolean }) {
+  const length = formatRestMinutes(bossRest.restMinutes)
+  if (compact) {
+    return (
+      <p className="text-[11px] text-fg-muted">
+        Down for <span className="font-semibold text-status-info">{length}</span>
+        {bossRest.chest && !bossRest.chest.opened && <> · <span className="font-semibold text-status-info">Boss Chest open</span></>}
+      </p>
+    )
+  }
+  return (
+    <p className="mx-4 mt-2 border-t border-fg-bright/10 pt-2 text-center text-[12px] text-fg-primary">
+      The {bossRest.name} is down for <span className="font-semibold text-status-info">{length}</span>. Its lair is safe to you until then.
+      {bossRest.chest && !bossRest.chest.opened && <> <span className="font-semibold text-status-info">Its Boss Chest is open.</span></>}
+    </p>
+  )
+}
+
 function BattleResultCard({
   result,
   weaponName,
@@ -541,6 +565,7 @@ function BattleResultCard({
               </span>
             )
           )}
+          {result.bossRest && <BossRestLine bossRest={result.bossRest} compact />}
           <button
             onClick={onDismiss}
             className="ml-auto h-8 flex-shrink-0 rounded-lg px-3 text-[11px] font-black uppercase tracking-widest text-fg-on-accent transition-all duration-150 hover:brightness-110"
@@ -586,6 +611,7 @@ function BattleResultCard({
           {result.multiplayerBonus && (
             <p className="mt-1 text-center text-[10px] text-resource-mp">Group bonus active</p>
           )}
+          {result.bossRest && <BossRestLine bossRest={result.bossRest} />}
         </div>
 
         {/* Close */}

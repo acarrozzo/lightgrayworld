@@ -1,3 +1,4 @@
+import type { BossRestView } from './types/room'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { RoomView, RoomItemView } from '@/lib/types/room'
@@ -471,6 +472,8 @@ export interface BattleResult {
   dropDetails?: BattleDropDetail[]
   multiplayerBonus: boolean
   lastTurn: BattleLastTurn | null
+  /** Set when the enemy was a lair boss: how long it rests from this kill. */
+  bossRest?: BossRestView | null
 }
 
 export interface BattleDropDetail {
@@ -484,6 +487,8 @@ export interface BattleDropDetail {
 export interface KillEntry {
   monster: string
   kills: number
+  /** When you last killed it (ISO), the boss rest clock's start. Null on rows older than the clock. */
+  lastKilledAt?: string | null
 }
 
 /**
@@ -568,7 +573,9 @@ export interface GameState {
   bumpKillMark: (enemySlug: string, kind: 'losses' | 'fled') => void
   setQuests: (quests: QuestProgressRow[]) => void
   setGiversMet: (giversMet: string[]) => void
-  incrementKill: (monster: string) => void
+  incrementKill: (monster: string, killedAt?: number) => void
+  /** The test reset: forget when you last killed it, so its rest ends. */
+  clearKillTime: (monster: string) => void
   setCurrentRoom: (room: Room | null) => void
   setRoomPlayers: (players: Player[]) => void
   setLoading: (loading: boolean) => void
@@ -635,14 +642,17 @@ export const useGameStore = create<GameState>()(
         }),
       setQuests: (quests) => set({ quests }),
       setGiversMet: (giversMet) => set({ giversMet }),
-      incrementKill: (monster) =>
+      incrementKill: (monster, killedAt) =>
         set((state) => {
+          const lastKilledAt = new Date(killedAt ?? Date.now()).toISOString()
           const existing = state.killList.find((k) => k.monster === monster)
           if (existing) {
-            return { killList: state.killList.map((k) => k.monster === monster ? { ...k, kills: k.kills + 1 } : k) }
+            return { killList: state.killList.map((k) => k.monster === monster ? { ...k, kills: k.kills + 1, lastKilledAt } : k) }
           }
-          return { killList: [...state.killList, { monster, kills: 1 }] }
+          return { killList: [...state.killList, { monster, kills: 1, lastKilledAt }] }
         }),
+      clearKillTime: (monster) =>
+        set((state) => ({ killList: state.killList.map((k) => (k.monster === monster ? { ...k, lastKilledAt: null } : k)) })),
       setCurrentRoom: (currentRoom) => set({ currentRoom }),
       setRoomPlayers: (roomPlayers) => set({ roomPlayers }),
       setLoading: (isLoading) => set({ isLoading }),

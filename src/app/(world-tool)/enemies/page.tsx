@@ -53,6 +53,7 @@ type Enemy = {
   isFriendly: boolean
   isFlying: boolean
   rank?: 'boss' | 'miniboss'
+  lair?: string
   rare?: boolean
   area: string
   specials?: string[]
@@ -63,6 +64,7 @@ type Enemy = {
 }
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { ENEMIES } = require('@/lib/game-data/enemies') as { ENEMIES: Enemy[] }
+const { restMinutesFor } = require('@/lib/game-data/boss-rest') as { restMinutesFor: (enemy: Enemy) => number }
 const { getEnemyTraits } = require('@/lib/game-data/enemy-traits') as {
   getEnemyTraits: (enemy: Enemy) => { id: string; label: string }[]
 }
@@ -161,6 +163,8 @@ export default async function EnemiesPage() {
       isFlying: e.isFlying,
       isFriendly: e.isFriendly,
       rank: e.rank,
+      lair: e.lair,
+      restMinutes: restMinutesFor(e),
       rare: e.rare,
       area: e.area,
       // Every perk and standing behaviour, as the battle HUD labels them.

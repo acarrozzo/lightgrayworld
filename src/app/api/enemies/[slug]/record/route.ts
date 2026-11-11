@@ -6,6 +6,11 @@ import { withAuth, AuthenticatedRequest } from '@/lib/middleware'
 import { prisma } from '@/lib/prisma'
 
 const { getEnemy } = require('@/lib/game-data/enemies') as { getEnemy: (slug: string) => RegistryEnemy | undefined }
+const { restMinutesFor, restingUntil, isResting } = require('@/lib/game-data/boss-rest') as {
+  restMinutesFor: (enemy: RegistryEnemy) => number
+  restingUntil: (enemy: RegistryEnemy, at: Date | null) => number | null
+  isResting: (enemy: RegistryEnemy, at: Date | null) => boolean
+}
 const { getEnemyTraits } = require('@/lib/game-data/enemy-traits') as {
   getEnemyTraits: (enemy: RegistryEnemy) => { id: string; label: string }[]
 }
@@ -55,7 +60,7 @@ function qtyLabel(entry: DropEntry): string {
  * record is read from the Battle Log (first kill, fastest win, biggest hit,
  * deaths to it, the dates the kill tiers were reached) and the KillList row
  * (the count); the drops are the registry's, each marked whether this
- * character has ever held the item (PlayerItemSeen). "First to fell" is the
+ * character has ever held the item (PlayerItemSeen). "First to win" is the
  * one board here: each player's lowest-level win over this enemy, ranked by
  * level, then XP, then turns, then date. Rows older than the snapshot
  * columns sit it out.
@@ -69,20 +74,25 @@ async function handleGetRecord(request: AuthenticatedRequest) {
     if (!enemy) return NextResponse.json({ success: false, error: 'No such enemy' }, { status: 404 })
     const userId = request.user.id
 
-    const killRow = await prisma.killList.findUnique({ where: { userId_monster: { userId, monster: slug } }, select: { kills: true } })
-    if (!killRow || killRow.kills < 1) {
-      return NextResponse.json({ success: false, error: 'Not yet felled' }, { status: 404 })
+    // No kill yet is still a record (zeros): the boss box's Info tab reads
+    // this before the first kill. The Kill List itself opens no card for an
+    // unkilled enemy, by its own rule.
+    const killRow = (await prisma.killList.findUnique({ where: { userId_monster: { userId, monster: slug } }, select: { kills: true, lastKilledAt: true } })) ?? {
+      kills: 0,
+      lastKilledAt: null as Date | null,
     }
 
+    // First-kill drops lead the list (10 Nov 2026): on the boss page's
+    // checklist they are the one-time prize, so they sit at the top.
     const drops = enemy.drops ?? {}
     const dropList = [
+      ...(drops.firstKill ?? []).map((itemSlug) => ({ slug: itemSlug, qty: '', chance: 'first kill' as const })),
       ...(drops.always ?? []).map((entry) => ({ slug: dropSlug(entry), qty: qtyLabel(entry), chance: 'always' as const })),
       ...(drops.main ?? []).map((entry) => ({
         slug: dropSlug(entry),
         qty: qtyLabel(entry),
         chance: typeof entry === 'string' ? '' : `${Math.round((entry.chance ?? 0) * 100)}%`,
       })),
-      ...(drops.firstKill ?? []).map((itemSlug) => ({ slug: itemSlug, qty: '', chance: 'first kill' as const })),
     ]
     const dropSlugs = [...new Set(dropList.map((d) => d.slug))]
 
@@ -159,6 +169,11 @@ async function handleGetRecord(request: AuthenticatedRequest) {
       },
       record: {
         kills: killRow.kills,
+        // The rest clock (game-data/boss-rest.js): how long this boss rests
+        // and, while it does, when you can fight it again.
+        restMinutes: restMinutesFor(enemy),
+        restingUntil: isResting(enemy, killRow.lastKilledAt) ? restingUntil(enemy, killRow.lastKilledAt) : null,
+        now: Date.now(),
         firstKillAt: firstWin?.createdAt ?? null,
         firstKillLevel: firstWin?.playerLevel ?? null,
         fastestWin: fastest?.turnsCount ?? null,

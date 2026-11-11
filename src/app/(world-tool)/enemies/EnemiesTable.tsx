@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { formatRestMinutes } from '@/lib/boss-rest-client'
 import { useUrlEnum, useUrlString, useUrlFlag } from '@/components/world-tool/useUrlState'
 import { useIsWide } from '@/components/world-tool/useIsWide'
 import Icon from '@/components/Icon'
@@ -25,6 +26,10 @@ export type EnemyRow = {
   isFriendly: boolean
   /** A unique, named enemy: a boss with a lair, or a miniboss that rolls in. */
   rank?: 'boss' | 'miniboss'
+  /** Its lair, when it has one: where it rolls alone and rests after a kill. */
+  lair?: string
+  /** How long it rests after a kill, in minutes (game-data/boss-rest.js); 0 when it never rests. */
+  restMinutes: number
   /** The Kill List's R chip: an enemy the original marked rare, by hand. */
   rare?: boolean
   /** The Kill List box it is listed in (game-data/kill-list-areas.js). */
@@ -233,6 +238,11 @@ function EnemyTr({ r }: { r: EnemyRow }) {
           <Icon name={r.icon} size={20} />
           <span className="font-medium text-fg-bright">{r.name}</span>
           {r.rank && <Tag className="border-resource-gold/50 text-resource-gold">{r.rank === 'boss' ? 'boss' : 'mini-boss'}</Tag>}
+          {r.restMinutes > 0 && (
+            <span title={`Lair #${r.lair}: rolls alone there and is on cooldown ${formatRestMinutes(r.restMinutes)} after a kill`}>
+              <Tag className="border-status-info/50 text-status-info">cooldown {formatRestMinutes(r.restMinutes)}</Tag>
+            </span>
+          )}
           {r.rare && <Tag className="border-resource-gold/50 text-resource-gold">rare</Tag>}
           {r.isFlying && <Tag>flying</Tag>}
           {r.isFriendly && <Tag>friendly</Tag>}

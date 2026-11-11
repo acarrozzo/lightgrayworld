@@ -1537,15 +1537,12 @@ function makeRepeatableChestHandler({
           // and the rest of the haul goes through.
           if (!granted.granted) capped.push(reward.itemSlug)
         }
-        if (goldAmount === 0 && xp === 0) {
+        if (goldAmount === 0) {
           return tx.user.findUnique({ where: { id: playerId }, select: { id: true, currency: true, xp: true } })
         }
         return tx.user.update({
           where: { id: playerId },
-          data: {
-            ...(goldAmount > 0 ? { currency: { increment: goldAmount } } : {}),
-            ...(xp > 0 ? { xp: { increment: xp } } : {}),
-          },
+          data: { currency: { increment: goldAmount } },
           select: { id: true, currency: true, xp: true },
         })
       })
@@ -1560,7 +1557,6 @@ function makeRepeatableChestHandler({
     ])
 
     const rewards = []
-    if (xp > 0) rewards.push({ type: 'xp', amount: xp })
     if (goldAmount > 0) rewards.push({ type: 'currency', amount: goldAmount })
     const cappedNames = []
     for (const reward of rolled) {
@@ -1591,6 +1587,214 @@ function makeRepeatableChestHandler({
           roomId: roomState.roomId,
           inventory,
           player: updatedUser,
+          showModal: true,
+          modalContent: {
+            type: 'icon',
+            icon,
+            iconColor,
+            title: label,
+            header: `${label} Opened`,
+            message,
+          },
+          questComplete: {
+            questTitle: '',
+            rewards,
+            levelUp: levelUp?.leveled ? levelUp : null,
+            newQuestTitles: [],
+          },
+        }),
+      },
+    ]
+    if (levelUp?.leveled) playerEvents.push({ event: 'player:level-up', payload: levelUp })
+
+    return { success: true, action, playerEvents }
+  }
+}
+
+/**
+ * Every Boss Chest, in declaration order — the World Tool's chest and item
+ * pages read it, and the room payload's `bossRest.chest` (services/
+ * boss-rest-service) finds a lair's chest by its boss. Populated by
+ * `makeBossChestHandler` below. No Boss Chest gives XP (5 Nov 2026): the
+ * kill is where the XP is, so there is no `xp` field to set. Each chest's
+ * `label` names its boss ("Gator Chest"), so the chests tell apart.
+ *
+ * @type {Array<{ roomId: string, bossSlug: string, action: string, label: string,
+ *                goldMin: number, goldMax: number,
+ *                always: Array<{ itemSlug: string, quantity?: number, quantityMin?: number, quantityMax?: number }>,
+ *                pools: Array<Array<{ itemSlug: string, quantity?: number, quantityMin?: number, quantityMax?: number, highlighted?: boolean }>>,
+ *                chance: Array<{ itemSlug: string, quantity?: number, oneIn: number }> }>}
+ */
+const BOSS_CHEST_LOOT = []
+
+/**
+ * Build a Boss Chest: the chest a lair holds while its boss is defeated, open
+ * once per kill (decided 5 Nov 2026, "chest option 1").
+ *
+ * The gate is the kill: the chest opens when your last open of it is older
+ * than your last kill of the boss, and only while the boss still rests. Its
+ * ActionCap row's `lastActionAt` is the last open, the same row the
+ * repeatable chests use, but compared to `KillList.lastKilledAt` instead of
+ * a cooldown — so there is no second clock, a rest that ends closes the chest
+ * with it, and the test reset (which clears the kill time) reads as "no kill
+ * yet". The open is a guarded update on that row, so two sockets racing the
+ * same kill open it once.
+ *
+ * `always` grants every entry on every open; `pools` rolls one entry from each
+ * pool; `chance` entries each roll a one-in-N. A range (`quantityMin`/`Max`)
+ * is rolled once so the grant and the card agree.
+ */
+function makeBossChestHandler({
+  roomId,
+  bossSlug,
+  action,
+  label,
+  goldMin = 0,
+  goldMax = 0,
+  always = [],
+  pools = [],
+  chance = [],
+  icon = 'chest',
+  iconColor = 'amber-500',
+  openMessage,
+  emptyMessage,
+}) {
+  BOSS_CHEST_LOOT.push({ roomId, bossSlug, action, label, goldMin, goldMax, always, pools, chance })
+
+  return async (playerId, roomState) => {
+    const { prisma } = require('../db-client')
+    const { grantItemOnce, getPlayerInventory, getItemBySlug } = require('./services/inventory-service')
+    const { checkAndApplyLevelUp } = require('./services/leveling-service')
+    const { getEnemy } = require('../game-data/enemies')
+    const { isResting } = require('../game-data/boss-rest')
+
+    roomState.touchActivity()
+
+    const boss = getEnemy(bossSlug)
+    const say = (message) => ({
+      success: true,
+      noTurn: true,
+      action,
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: createActionFeedbackPayload(action, 'info', message, {
+            roomId: roomState.roomId,
+            showModal: true,
+            modalContent: { type: 'icon', icon, iconColor, title: label, message },
+          }),
+        },
+      ],
+    })
+
+    // The kill row is the key. No kill, or a rest that has ended, and the
+    // chest is shut; an open newer than the kill and it is already empty.
+    const killRow = await prisma.killList.findUnique({
+      where: { userId_monster: { userId: playerId, monster: bossSlug } },
+      select: { lastKilledAt: true },
+    })
+    const killedAt = killRow?.lastKilledAt ? new Date(killRow.lastKilledAt) : null
+    if (!killedAt || !isResting(boss, killedAt)) {
+      return say(`The ${label.toLowerCase()} is shut. It opens while the ${boss?.name ?? 'boss'} is down.`)
+    }
+
+    // Claim the open: the row's lastActionAt moves to now only if it is older
+    // than the kill (or missing). A second socket on the same kill finds it
+    // already moved and gets the "already emptied" line, never a second haul.
+    const now = new Date()
+    const cap = await prisma.actionCap.upsert({
+      where: { playerId_roomId_actionKey: { playerId, roomId, actionKey: action } },
+      create: { playerId, roomId, actionKey: action },
+      update: {},
+      select: { lastActionAt: true },
+    })
+    const openedAt = cap.lastActionAt ? new Date(cap.lastActionAt) : null
+    if (openedAt && openedAt >= killedAt) {
+      return say(emptyMessage || `You already emptied the ${label.toLowerCase()}. It fills when the ${boss?.name ?? 'boss'} is back and down again.`)
+    }
+    const claimed = await prisma.actionCap.updateMany({
+      where: {
+        playerId,
+        roomId,
+        actionKey: action,
+        OR: [{ lastActionAt: null }, { lastActionAt: { lt: killedAt } }],
+      },
+      data: { lastActionAt: now },
+    })
+    if (claimed.count === 0) {
+      return say(emptyMessage || `You already emptied the ${label.toLowerCase()}. It fills when the ${boss?.name ?? 'boss'} is back and down again.`)
+    }
+
+    const rollQty = (reward) =>
+      typeof reward.quantityMin === 'number' && typeof reward.quantityMax === 'number'
+        ? { ...reward, quantity: reward.quantityMin + Math.floor(Math.random() * (reward.quantityMax - reward.quantityMin + 1)) }
+        : reward
+    const rolled = [
+      ...always.map(rollQty),
+      ...pools.map((pool) => (pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null)).filter(Boolean).map(rollQty),
+      ...chance.filter((entry) => entry.oneIn > 0 && Math.floor(Math.random() * entry.oneIn) === 0).map(rollQty),
+    ]
+    const goldAmount = goldMax > 0 ? goldMin + Math.floor(Math.random() * (goldMax - goldMin + 1)) : 0
+
+    let updatedUser
+    const capped = []
+    try {
+      updatedUser = await prisma.$transaction(async (tx) => {
+        for (const reward of rolled) {
+          const granted = await grantItemOnce(playerId, reward.itemSlug, reward.quantity ?? 1, tx)
+          if (!granted.granted) capped.push(reward.itemSlug)
+        }
+        if (goldAmount === 0) {
+          return tx.user.findUnique({ where: { id: playerId }, select: { id: true, currency: true, xp: true } })
+        }
+        return tx.user.update({
+          where: { id: playerId },
+          data: { currency: { increment: goldAmount } },
+          select: { id: true, currency: true, xp: true },
+        })
+      })
+    } catch (err) {
+      // The claim is already taken; give it back so the player can try again.
+      await prisma.actionCap
+        .updateMany({ where: { playerId, roomId, actionKey: action }, data: { lastActionAt: openedAt } })
+        .catch(() => {})
+      console.error(`[${label}] Failed to grant chest contents:`, err)
+      return createErrorResult(action, 'Something went wrong opening the chest. Please try again.')
+    }
+
+    const [levelUp, inventory] = await Promise.all([checkAndApplyLevelUp(playerId), getPlayerInventory(playerId)])
+
+    const rewards = []
+    if (goldAmount > 0) rewards.push({ type: 'currency', amount: goldAmount })
+    const cappedNames = []
+    const feedParts = []
+    if (goldAmount > 0) feedParts.push(`${goldAmount} gold`)
+    for (const reward of rolled) {
+      const template = await getItemBySlug(reward.itemSlug)
+      const name = template?.name || reward.itemSlug
+      if (capped.includes(reward.itemSlug)) {
+        cappedNames.push(name)
+        continue
+      }
+      const quantity = reward.quantity ?? 1
+      rewards.push({ type: 'item', itemSlug: reward.itemSlug, name, quantity, highlighted: !!reward.highlighted })
+      feedParts.push(quantity > 1 ? `${quantity} ${name}` : name)
+    }
+
+    const baseMessage = openMessage || `You open the ${label.toLowerCase()}.`
+    const message = cappedNames.length
+      ? `${baseMessage} You are carrying as ${cappedNames.join(' and ')} as you can hold, and leave ${cappedNames.length > 1 ? 'those' : 'that'} behind.`
+      : baseMessage
+
+    const playerEvents = [
+      {
+        event: 'action:feedback',
+        payload: createActionFeedbackPayload(action, 'success', `${baseMessage} ${feedParts.join(', ')}.`, {
+          roomId: roomState.roomId,
+          inventory,
+          player: updatedUser,
+          // The box's Boss Chest button turns to "emptied" on this.
+          bossChest: { bossSlug, opened: true },
           showModal: true,
           modalContent: {
             type: 'icon',
@@ -1935,6 +2139,17 @@ function makeSummonHandler({ action, enemySlug, message, ambush = false }) {
     if (roomState.activeBattles.get(playerId)?.isActive) {
       return { ...createErrorResult(action, 'You are already in a battle.'), fightRefusal: true }
     }
+    // A resting lair boss (game-data/boss-rest.js) cannot be called out
+    // either: the button says when, like the roll it would otherwise skip.
+    const { ensureKillSet, getLastKilledAt } = require('./services/kill-list-service')
+    const { getEnemy } = require('../game-data/enemies')
+    const { restingUntil } = require('../game-data/boss-rest')
+    await ensureKillSet(playerId).catch(() => null)
+    const until = restingUntil(getEnemy(enemySlug), getLastKilledAt(playerId, enemySlug))
+    if (until != null && until > Date.now()) {
+      const wait = formatTimeRemaining(Math.ceil((until - Date.now()) / 1000))
+      return createErrorResult(action, `The ${getEnemy(enemySlug)?.name ?? 'boss'} is down. Back in ${wait}.`)
+    }
     if (isProbabilistic(roomState.roomId) && roomState.getPresentEnemy(playerId) !== enemySlug) {
       roomState.setPresentEnemy(playerId, enemySlug)
     }
@@ -2058,6 +2273,27 @@ const ROOM_ACTIONS = {
         message: 'It looks like a map of Room Zero. A gray square with a star in the center.',
       },
     },
+  },
+  // ==================== MARSH BEHIND THE CABIN ====================
+  // The Gator's Boss Chest: open once per kill while the Gator is defeated
+  // (5 minutes). Two red and two blue potions and a little gold (5 Nov 2026);
+  // the kill itself hands out the raw meat.
+  '013': {
+    'open boss chest': makeBossChestHandler({
+      roomId: '013',
+      bossSlug: 'gator',
+      action: 'open boss chest',
+      label: 'Gator Chest',
+      goldMin: 10,
+      goldMax: 30,
+      icon: 'chest',
+      iconColor: 'amber-500',
+      openMessage: 'You dig through the mud where the Gator was lying.',
+      always: [
+        { itemSlug: 'red-potion', quantity: 2 },
+        { itemSlug: 'blue-potion', quantity: 2 },
+      ],
+    }),
   },
   '001': {
     'read sign': withMerchantNotice('001', {
@@ -2791,14 +3027,17 @@ const ROOM_ACTIONS = {
   // The treasure room. Legacy rolled a weapon/armour piece AND a Ring of X V on
   // every open, which is why this chest declares two pools.
   '232o': {
-    'open treasure chest': makeRepeatableChestHandler({
+    // The Master Thief's Boss Chest (5 Nov 2026): the same two pools the
+    // repeatable chest rolled (a weapon or armour piece AND a Ring of X V),
+    // now once per kill of the Thief while he is defeated, instead of on its
+    // own hour. The action key is the old chest's, so its ActionCap rows carry.
+    'open treasure chest': makeBossChestHandler({
       roomId: '232o',
+      bossSlug: 'master-thief',
       action: 'open treasure chest',
-      label: "Thieve's Treasure Chest",
-      cooldownMs: 60 * 60 * 1000,
+      label: 'Thief Chest',
       goldMin: 200,
       goldMax: 600,
-      xp: 150,
       icon: 'chest',
       iconColor: 'amber-500',
       openMessage: 'You throw back the lid of the treasure chest. Half of Red Town is in here.',
@@ -2818,6 +3057,7 @@ const ROOM_ACTIONS = {
       ],
     }),
   },
+
 
   // ==================== THE CATACOMBS ====================
   // The Silver Vault. The original wired up the click cooldown and the "try again
@@ -3607,13 +3847,10 @@ const ROOM_ACTIONS = {
   },
 
   // --- The Test of Light: the Forest Princess ---
+  // The Princess rolls into the slot like any lair boss now (5 Nov 2026); the
+  // room card's Attack button is the "battle forest princess" there was.
   '525': {
     'rest by the princess': makeRestHandler('525', 'rest by the princess'),
-    'battle forest princess': makeSummonHandler({
-      action: 'battle forest princess',
-      enemySlug: 'forest-princess',
-      message: 'You bow to the Forest Princess and draw. She smiles, and the light goes strange. The Test of Light begins.',
-    }),
   },
 
   // ==================== MOUNTAINS ====================
@@ -3726,14 +3963,8 @@ const ROOM_ACTIONS = {
     }),
   },
 
-  // --- The Silver Temple: the champions are ready when you are ---
-  '625': {
-    'challenge silver titan': makeSummonHandler({
-      action: 'challenge silver titan',
-      enemySlug: 'silver-titan',
-      message: 'You step into the arena. A Silver Titan steps in after you, and the champions around the edge go quiet.',
-    }),
-  },
+  // The Silver Temple's Titan stands in the slot like any lair boss now
+  // (5 Nov 2026); the room card's Attack button replaced "challenge silver titan".
 
   // ==================== STAR CITY ====================
   // --- Camp Hero: the fountain, the silver chest, and the teachers (the two
@@ -4425,6 +4656,7 @@ module.exports = {
   ROOM_ACTIONS,
   CHEST_LOOT,
   REPEATABLE_CHEST_LOOT,
+  BOSS_CHEST_LOOT,
   getGatherActionForRoom,
   getGatherActionsForRoom,
   // The result and payload builders every action shares, and the shop modal,

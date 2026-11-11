@@ -1,5 +1,9 @@
 // Maps room IDs to enemies that appear there.
-// Static rooms always have their enemy present.
+// Static rooms always have their enemy present. Since 5 Nov 2026 no ranked
+// enemy is static: every lair is a one-entry roll (most at 100%, the Gator at
+// 50%), so the boss sits in the player's slot like anything else, persists
+// across a refresh, and can rest after a kill (game-data/boss-rest.js) — a
+// resting boss is stripped from the roll and the lair reads SAFE.
 // Probabilistic rooms use spawnChance + weighted enemy selection per player turn.
 //
 // Room 013: Marsh Behind the Cabin — Gator 50% spawn chance
@@ -2020,12 +2024,13 @@ const ROOM_ENEMIES = {
   // ---------- The Stone Grotto ----------
   // Stone Grotto — the missing dwarf axeman is the Captain's third quest, and
   // this is where he was last seen. 3-in-10 him, 1-in-10 a demon wing.
+  // The Axeman's lair: his alone since 5 Nov 2026 (the legacy roll gave a demon
+  // wing one time in four), so the room reads SAFE while he rests.
   '321': {
     probabilistic: true,
     spawnChance: 0.4,
     enemies: [
-      { slug: 'possessed-axeman', weight: 3 },
-      { slug: 'demon-wing', weight: 1 },
+      { slug: 'possessed-axeman', weight: 1 },
     ],
   },
   // Under the Grotto — legacy rand(1,15), 1-4 demon wing and 5 a golden bat.
@@ -2152,9 +2157,7 @@ const ROOM_ENEMIES = {
     ],
   },
   // Mine Level 5 — the War Turtle. Sub-boss, always present.
-  '311-05': {
-    enemies: ['war-turtle'],
-  },
+  '311-05': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'war-turtle', weight: 1 }] },
   // Iron tier, lower (mine06.php) — the same eight, with the elites promoted to
   // the common slots. Mine Levels 6-9.
   '311-06': {
@@ -2215,9 +2218,7 @@ const ROOM_ENEMIES = {
   },
   // Mine Level 10 — the Phoenix. Mining Guild quest 32, and the reason the quest
   // text warns you: it flies, so melee cannot touch it. Bring a bow.
-  '311-10': {
-    enemies: ['phoenix'],
-  },
+  '311-10': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'phoenix', weight: 1 }] },
   // Steel tier, upper (mine11.php) — Mine Levels 11-14. Coal starts at 10.
   '311-11': {
     probabilistic: true,
@@ -2276,9 +2277,7 @@ const ROOM_ENEMIES = {
     ],
   },
   // Mine Level 15 — the Ulfberht. Sub-boss.
-  '311-15': {
-    enemies: ['ulfberht'],
-  },
+  '311-15': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'ulfberht', weight: 1 }] },
   // Steel tier, lower (mine16.php) — Mine Levels 16-19.
   '311-16': {
     probabilistic: true,
@@ -2338,9 +2337,7 @@ const ROOM_ENEMIES = {
   },
   // Mine Level 20 — the Cyclops. Mining Guild quest 33. Its attacks are pure:
   // full ATT every hit, and your DEF never enters the sum.
-  '311-20': {
-    enemies: ['cyclops'],
-  },
+  '311-20': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'cyclops', weight: 1 }] },
   // Mithril tier, upper (mine21.php) — Mine Levels 21-24. Mithril starts at 20.
   '311-21': {
     probabilistic: true,
@@ -2399,9 +2396,7 @@ const ROOM_ENEMIES = {
     ],
   },
   // Mine Level 25 — the Griffin. Sub-boss, and flying.
-  '311-25': {
-    enemies: ['griffin'],
-  },
+  '311-25': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'griffin', weight: 1 }] },
   // Mithril tier, lower (mine26.php) — Mine Levels 26-29.
   '311-26': {
     probabilistic: true,
@@ -2460,9 +2455,7 @@ const ROOM_ENEMIES = {
     ],
   },
   // Mine Level 30 — the Minotaur. Mining Guild quest 34, and the bottom of the mine.
-  '311-30': {
-    enemies: ['minotaur'],
-  },
+  '311-30': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'minotaur', weight: 1 }] },
 
   // ==================== FOREST (Rocky Flats supporting change) ====================
   // The Hill Ogre. The original put it behind the hill at r100/room110.php on a
@@ -2522,16 +2515,18 @@ const ROOM_ENEMIES = {
     enemies: [{ slug: 'crocodile', weight: 100 }],
   },
   // The four Water Temples: the boss is always there and never starts it.
-  '405': { enemies: ['heavy-walrus'] },
-  '409': { enemies: ['coral-wizard'] },
-  '418': { enemies: ['smooth-ranger'] },
-  '423': { enemies: ['thunder-barbarian'] },
+  '405': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'heavy-walrus', weight: 1 }] },
+  '409': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'coral-wizard', weight: 1 }] },
+  '418': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'smooth-ranger', weight: 1 }] },
+  '423': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'thunder-barbarian', weight: 1 }] },
   // The Master Temple. The Guardian stands watch from the moment you arrive,
   // but will not be challenged until its four tests — the temple bosses — are
   // complete. `challenge` is data only; executeStartBattle checks it before
   // any fight with a static enemy here begins.
   '425': {
-    enemies: ['water-temple-guardian'],
+    probabilistic: true,
+    spawnChance: 1,
+    enemies: [{ slug: 'water-temple-guardian', weight: 1 }],
     challenge: {
       requiresCompletedQuests: [
         'quest_watertempleguardian_001',
@@ -2583,7 +2578,8 @@ const ROOM_ENEMIES = {
       { slug: 'colossal-squid', weight: 18 },
       { slug: 'glowing-octopus', weight: 11 },
       { slug: 'squid', weight: 9 },
-      { slug: 'king-squid', weight: 1 },
+      // The King Squid's one-in-fifty-eight here went on 5 Nov 2026: its lair is
+      // #421 alone, so its rest clock means something.
       { slug: 'great-white', weight: 1 },
       { slug: 'hammerhead', weight: 1 },
       { slug: 'crocodile', weight: 1 },
@@ -2609,7 +2605,7 @@ const ROOM_ENEMIES = {
   // the Kraken, which does not wait to be attacked.
   '495': { enemies: ['hammerhead'] },
   '496': { enemies: ['great-white'] },
-  '499': { enemies: ['kraken'] },
+  '499': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'kraken', weight: 1 }] },
 
   // ==================== DARK FOREST ====================
   // The stone path in from the Forest (501, 503): the original's "Mountain
@@ -2748,7 +2744,7 @@ const ROOM_ENEMIES = {
   },
   // The Forest Princess: always here, never starts it. Her "Test of Light" is
   // yours to begin.
-  '525': { enemies: ['forest-princess'] },
+  '525': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'forest-princess', weight: 1 }] },
 
   // ==================== THE DARK KEEP ====================
   // Ground floor: the original's `dark-keep-1.php`, three of nine.
@@ -2768,12 +2764,13 @@ const ROOM_ENEMIES = {
   ),
   // The Dark Stairwell: the stone guardian 1-in-10 — and, the original's own
   // comment, a Giant Rat 1-in-10 "for funsies".
+  // The Stone Sphinx's lair: a boss since 5 Nov 2026, so it rolls alone here
+  // (the legacy roll shared the slot with a giant rat).
   '516d': {
     probabilistic: true,
     spawnChance: 0.2,
     enemies: [
       { slug: 'stone-sphinx', weight: 1 },
-      { slug: 'giant-rat', weight: 1 },
     ],
   },
   // Second floor: `dark-keep-2.php`, four of ten, the Paladin three times as
@@ -2837,7 +2834,7 @@ const ROOM_ENEMIES = {
     enemies: [{ slug: 'giant-mountain-giant', weight: 1 }],
   },
   // The Mountain Bridge: the Gatekeeper, always — `rand(1, 1)` in the original.
-  '619': { enemies: ['gatekeeper'] },
+  '619': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'gatekeeper', weight: 1 }] },
   // Dragon's Ledge: a Dragon four slots in seven, the set a quarter, the boss
   // slot whole; a fight seven turns in ten.
   '620': {
@@ -2884,8 +2881,8 @@ const ROOM_ENEMIES = {
   },
   // The Silver Temple: a Silver Titan stands in the arena, as the Forest
   // Princess stands in her glade — always there, never the one to start it.
-  // The "challenge silver titan" button (room-action-handlers) begins the fight.
-  '625': { enemies: ['silver-titan'] },
+  // The Titan rolls into the slot (a lair since 5 Nov 2026); the room card's Attack button begins the fight.
+  '625': { probabilistic: true, spawnChance: 1, enemies: [{ slug: 'silver-titan', weight: 1 }] },
 
   // ==================== SWAMP ====================
   // Anthony's swamp enemies are not written yet (2026-10-30), so the path rooms
@@ -2977,22 +2974,33 @@ function pickFromPool(pool) {
   return pool[pool.length - 1].slug
 }
 
+/** The pool entries that are not resting: a resting boss is not in the roll. */
+function awake(pool, resting) {
+  if (!resting || resting.size === 0) return pool
+  return pool.filter((entry) => Array.isArray(entry.ladder) || !resting.has(entry.slug))
+}
+
 // Picks a single enemy slug from a probabilistic room's weighted pool.
 // Assumes the caller has already decided a spawn should happen. A ladder
 // entry is resolved against `kills` (the player's kill set) and then rolled
 // as its own small pool; a ladder that resolves to nothing spends the slot.
-function pickWeightedEnemy(config, kills) {
-  const totalWeight = config.enemies.reduce((sum, e) => sum + e.weight, 0)
+// `resting` (the player's resting bosses, services/kill-list-service) is
+// stripped first: a lair whose one boss rests rolls nothing, and a rung whose
+// every boss rests is quiet rather than falling through to a weaker rung.
+function pickWeightedEnemy(config, kills, resting) {
+  const pool = awake(config.enemies, resting)
+  const totalWeight = pool.reduce((sum, e) => sum + e.weight, 0)
+  if (totalWeight <= 0) return null
   let roll = Math.random() * totalWeight
-  let entry = config.enemies[config.enemies.length - 1]
-  for (const candidate of config.enemies) {
+  let entry = pool[pool.length - 1]
+  for (const candidate of pool) {
     roll -= candidate.weight
     if (roll <= 0) {
       entry = candidate
       break
     }
   }
-  if (Array.isArray(entry.ladder)) return pickFromPool(resolveLadder(entry.ladder, kills))
+  if (Array.isArray(entry.ladder)) return pickFromPool(awake(resolveLadder(entry.ladder, kills), resting))
   return entry.slug
 }
 
@@ -3016,13 +3024,15 @@ function listRoomEnemySlugs(config) {
 // an enemy by weight. Safe to call for any room — returns null for static rooms.
 // `context.kills` is the player's kill set (services/kill-list-service); a
 // ladder slot reads it, and with none only an unconditional rung can match.
+// `context.resting` is the set of ranked enemies resting for the player
+// (game-data/boss-rest.js): none of them can come out, whatever the odds.
 function rollRoomEnemy(roomId, context = {}) {
   const config = ROOM_ENEMIES[roomId]
   if (!config?.probabilistic) return null
 
   if (Math.random() > config.spawnChance) return null
 
-  return pickWeightedEnemy(config, context.kills)
+  return pickWeightedEnemy(config, context.kills, context.resting)
 }
 
 module.exports = { ROOM_ENEMIES, getRoomEnemies, isProbabilistic, rollRoomEnemy, listRoomEnemySlugs, resolveLadder }

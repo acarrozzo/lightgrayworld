@@ -19,7 +19,8 @@ const {
 const { getMapSheetForRoom, getTeleportHubByRoom } = require('./game-data/world-map.js')
 const { getFaction } = require('./game-data/factions.js')
 const { isMember: isGuildMember } = require('./game-engine/services/faction-service.js')
-const { ensureKillSet, clearKillSet } = require('./game-engine/services/kill-list-service.js')
+const { ensureKillSet, clearKillSet, getRestingSet } = require('./game-engine/services/kill-list-service.js')
+const { buildBossRestStatus, getLairBoss } = require('./game-engine/services/boss-rest-service.js')
 const { MAP_STATE_SELECT, projectMapState } = require('./game-engine/services/map-state.js')
 const { GOLD_CHEST_SELECT, projectGoldChestState } = require('./game-data/gold-chests.js')
 const { debugLog } = require('./debug-log.js')
@@ -122,7 +123,8 @@ async function maybeStartAutoBattle({ socket, player, toRoom, gameEngine }) {
     if (!slug) {
       // The Mountains' boss slot climbs with the kill list; load it before the roll.
       const kills = await ensureKillSet(player.id).catch(() => null)
-      slug = rollRoomEnemy(toRoom, { kills })
+      // A resting lair boss (boss-rest.js) does not come out on arrival either.
+      slug = rollRoomEnemy(toRoom, { kills, resting: getRestingSet(player.id) })
       destRoomState.setPresentEnemy(player.id, slug)
     }
 
@@ -1106,7 +1108,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
    * builder for both ways of arriving, so a teleport into a lever room shows
    * the same exits a walk in would.
    */
-  const buildDestinationRoomData = ({ destinationRoom, toRoom, player, gatherCooldowns, supplies }) => {
+  const buildDestinationRoomData = ({ destinationRoom, toRoom, player, gatherCooldowns, supplies, bossRest = null }) => {
     // Probabilistic rooms start with no enemy — the spawn roll happens in
     // maybeStartAutoBattle after the move succeeds, and the client is told via
     // an enemy_spawn action:feedback. A static room's enemy is always there.
@@ -1142,6 +1144,15 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       // Likewise per player: what this room hands out for free, and how much of
       // it this player can still take.
       supplies: Array.isArray(supplies) ? supplies : [],
+      // The lair's boss, resting for this player (services/boss-rest-service):
+      // the box, the clock, the Boss Chest. While it rests the lair is SAFE for
+      // them — nothing can roll — so the danger line and the hunt read it so.
+      bossRest: bossRest || null,
+      ...(bossRest ? { isSafe: true } : {}),
+      // The lair's boss, whatever its state, so the room card can draw its
+      // box all the time: standing (the live `enemy`), defeated (`bossRest`),
+      // or not here yet (neither — a swing draws it out at the room's odds).
+      lairBoss: getLairBoss(toRoom) || null,
     }
   }
 
@@ -1151,12 +1162,13 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
    * countdowns depend on neither and go out alongside.
    */
   const loadDestination = async (player, toRoom) => {
-    const [destinationRoom, gatherCooldowns, supplies] = await Promise.all([
+    const [destinationRoom, gatherCooldowns, supplies, bossRest] = await Promise.all([
       fetchRoomWithColors(prisma, toRoom),
       buildGatherCooldowns(player.id, toRoom),
       buildSupplyStatus(player.id, toRoom),
+      buildBossRestStatus(player.id, toRoom).catch(() => null),
     ])
-    return { destinationRoom, gatherCooldowns, supplies }
+    return { destinationRoom, gatherCooldowns, supplies, bossRest }
   }
 
   // True if this player is locked in a battle of their own right now.
@@ -1739,7 +1751,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           }
         }
 
-        const { destinationRoom, gatherCooldowns, supplies } = await loadDestination(player, toRoom)
+        const { destinationRoom, gatherCooldowns, supplies, bossRest } = await loadDestination(player, toRoom)
         if (!destinationRoom) {
           console.log(`[Socket] player-move - Destination room ${toRoom} not found`)
           emitActionFeedback(socket, {
@@ -1756,6 +1768,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           player,
           gatherCooldowns,
           supplies,
+          bossRest,
         })
         const toRoomName = destinationRoom.name
 
@@ -1814,6 +1827,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
                 player,
                 gatherCooldowns: fallen.gatherCooldowns,
                 supplies: fallen.supplies,
+                bossRest: fallen.bossRest,
               })
               landedEntryDirection = null
             }
@@ -2162,7 +2176,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             })
             return
           }
-          const { destinationRoom, gatherCooldowns, supplies } = await loadDestination(player, toRoomId)
+          const { destinationRoom, gatherCooldowns, supplies, bossRest } = await loadDestination(player, toRoomId)
           if (!destinationRoom) {
             emitActionFeedback(socket, { action: 'teleport', message: 'Destination not found', outcome: 'failure' })
             return
@@ -2174,6 +2188,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             player,
             gatherCooldowns,
             supplies,
+            bossRest,
           })
 
           const result = await gameEngine.processUserAction({

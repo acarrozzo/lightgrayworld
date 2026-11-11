@@ -43,7 +43,8 @@ export default async function LinesPage() {
         next line in order, shown in yellow in the room until the next one, and written to the feed as a{' '}
         <span className="font-mono">line</span> event with its speaker and a source tag (<span className="font-mono">room · speaker · set #n</span>,
         the same numbering as below) when the line-sources setting is on. Keepers speak from their shop&apos;s talk button, a
-        crowd from Listen In, and a quest giver&apos;s idle lines and asides from Talk and from Chat. {total} lines in {sets.length} sets
+        crowd from Listen In, and a quest giver&apos;s idle lines and asides from Talk and from Chat. A lair&apos;s stir lines answer a rest, a
+        search or any other turn spent there while the boss is about and not out; the swing calls the boss out instead. {total} lines in {sets.length} sets
         across {roomCount} rooms.
       </p>
 

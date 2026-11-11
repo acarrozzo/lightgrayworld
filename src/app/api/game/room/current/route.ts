@@ -244,6 +244,20 @@ export async function GET(request: NextRequest) {
         console.error('[Room API] Error computing gather cooldown:', error)
       }
 
+      // The lair's boss resting for this player (boss-rest-service): the same
+      // field the socket's move payload carries. While it rests the lair is
+      // SAFE for them.
+      try {
+        const { buildBossRestStatus, getLairBoss } = require('@/lib/game-engine/services/boss-rest-service')
+        const bossRest = await buildBossRestStatus(user.id, roomId)
+        const room = payload.room as Record<string, unknown>
+        room.bossRest = bossRest
+        room.lairBoss = getLairBoss(roomId) ?? null
+        if (bossRest) room.isSafe = true
+      } catch (error) {
+        console.error('[Room API] Error computing boss rest:', error)
+      }
+
       // Include world tick information for immediate countdown display
       // Always use TickClock methods - no fallback math
       if (gameEngine?.tickClock) {

@@ -125,6 +125,52 @@ export interface TravelerView {
   leavesAt?: number | null
 }
 
+/**
+ * The lair's boss, resting for this player (server: services/boss-rest-service;
+ * the rule: game-data/boss-rest.js). Per player: your Gator is down for you.
+ * `secondsRemaining` is the server's count at the moment the payload was
+ * built; the client turns it into a deadline on receipt rather than trusting
+ * its own clock against `restingUntil`.
+ */
+export interface BossRestView {
+  slug: string
+  name: string
+  level: number
+  rank: 'boss' | 'miniboss'
+  /** Its lair; the victory's note carries it so the client knows which room the strip belongs to. */
+  lair?: string
+  restMinutes: number
+  /** Server epoch ms when the rest ends. */
+  restingUntil: number
+  secondsRemaining: number
+  totalSeconds: number
+  /** The lair's Boss Chest, once per kill, or null when the boss has none yet. */
+  chest: { action: string; label: string; opened: boolean } | null
+  /** The temporary tester is on for this server (BOSS_REST_TEST=1). */
+  testReset: boolean
+}
+
+/** A lair's boss as the room card draws it before it stands there: the registry's numbers. */
+export interface LairBossView {
+  slug: string
+  name: string
+  description?: string
+  icon?: string
+  level: number
+  hp: number
+  att: number
+  def: number
+  isAggressive: boolean
+  isFriendly?: boolean
+  isFlying?: boolean
+  rank: 'boss' | 'miniboss'
+  damageType?: 'MELEE' | 'RANGED' | 'MAGIC'
+  specials?: string[]
+  isMeleeImmune?: boolean
+  isRangedImmune?: boolean
+  isMagicImmune?: boolean
+}
+
 export interface RoomView extends RoomViewNavigation {
   id: string
   roomId: string
@@ -145,7 +191,15 @@ export interface RoomView extends RoomViewNavigation {
   directionColors?: Record<string, string> | null
   description: string
   dangerLevel: number
+  /** The seeded flag, or true for you while this lair's boss rests. */
   isSafe: boolean
+  /** Set while this lair's boss rests for you; null or absent otherwise. */
+  bossRest?: BossRestView | null
+  /**
+   * The ranked enemy whose lair this room is, whatever its state, so the
+   * card can draw its box all the time. Null for a room that is no lair.
+   */
+  lairBoss?: LairBossView | null
   hasSearch?: boolean
   stateNote?: string | null
   actionOverrides?: Record<string, { className?: string; icon?: string }> | null

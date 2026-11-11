@@ -323,9 +323,8 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   // The hidden doors down here (232 / 233 / 232mm / 232b / 232j / 232l) need no
   // entry: Search is a core action RoomBox renders in every room, and the
   // search-reveal definitions do the rest.
-  '232o': [
-    { action: 'open treasure chest', label: 'Open Treasure Chest', icon: 'chest', className: 'fill-mood-treasure' },
-  ],
+  // 232o: the Thieve's Treasure Chest is the Master Thief's Boss Chest since
+  // 5 Nov 2026 — the room card's resting strip shows it while he rests.
   '232x': [
     { action: 'rest at oasis', label: 'Rest at the Oasis', icon: 'heal', className: 'fill-hue-blue' },
   ],
@@ -494,7 +493,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '525': [
     { action: 'rest by the princess', label: 'Rest', icon: 'heal', className: 'fill-hue-green' },
-    { action: 'battle forest princess', label: 'Battle the Forest Princess', icon: 'attack', className: 'fill-action-attack' },
   ],
 
   // ==================== THE NEVERENDING MINE ====================
@@ -532,9 +530,6 @@ export const ROOM_ACTIONS: Record<string, RoomAction[]> = {
   ],
   '621': [
     { action: 'open gold chest', label: 'Open Gold Chest', icon: 'chest', className: 'fill-mood-treasure' },
-  ],
-  '625': [
-    { action: 'challenge silver titan', label: 'Challenge a Silver Titan', icon: 'sword1', className: 'fill-action-attack' },
   ],
 
   // ==================== STAR CITY ====================

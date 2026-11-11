@@ -37,7 +37,10 @@ const { getSkillState } = require('./services/skill-service')
 const { rand } = require('./battle-calculator')
 const { executeStartBattle, executePlayerAttack, executePlayerFlee, resolveSupportTurn, fetchEquippedWeapon, readAmmo, ammoDisplayName } = require('./battle-action-handlers')
 const { getRoomEnemies, isProbabilistic, rollRoomEnemy } = require('../game-data/room-enemies')
-const { getKillSet, ensureKillSet } = require('./services/kill-list-service')
+const { getKillSet, ensureKillSet, getRestingSet } = require('./services/kill-list-service')
+const { resetBossRest, getLairBoss, isLairBossResting } = require('./services/boss-rest-service')
+const { lairStirLines } = require('../game-data/lair-lines')
+const { nextLineIndex } = require('./line-cursor-state')
 const { getEnemy } = require('../game-data/enemies')
 const { getRevealDefinition, getNextRevealStage, markRevealed, clearRevealed } = require('./search-reveal-state')
 const { savePresentEnemy } = require('./services/present-enemy-service')
@@ -466,8 +469,11 @@ class RoomState {
   }
 
   // Rolls for an enemy only when none is present. Returns the freshly spawned slug,
-  // or null when nothing new appeared.
-  maybeSpawnEnemy(playerId) {
+  // or null when nothing new appeared. `summon` is the hunt's: in a lair it
+  // calls the boss out for certain (5 Nov 2026, "if I attack a boss it should
+  // trigger 100%") unless the boss is defeated for this player, in which case
+  // the lair has nothing to give and the swing finds nothing.
+  maybeSpawnEnemy(playerId, { summon = false } = {}) {
     if (!isProbabilistic(this.roomId)) return null
 
     const battle = this.activeBattles.get(playerId)
@@ -476,7 +482,11 @@ class RoomState {
     // Something is already here — no new roll (engagement handled by caller).
     if (this.playerEnemyState.get(playerId)?.present) return null
 
-    const slug = rollRoomEnemy(this.roomId, { kills: getKillSet(playerId) })
+    const lair = summon ? getLairBoss(this.roomId) : null
+    // A resting lair boss (game-data/boss-rest.js) is not in the roll.
+    const slug = lair
+      ? isLairBossResting(playerId, this.roomId) ? null : lair.slug
+      : rollRoomEnemy(this.roomId, { kills: getKillSet(playerId), resting: getRestingSet(playerId) })
     this.playerEnemyState.set(playerId, { present: slug, grace: false })
     // Persist only when something actually spawned; a miss leaves the (empty)
     // state unchanged, so there's nothing new to write.
@@ -668,6 +678,8 @@ class RoomState {
         return await this.executeCompleteQuest(action, playerId)
       case 'set_title':
         return await this.executeSetTitle(action, playerId)
+      case 'boss_rest_reset':
+        return await this.executeBossRestReset(action, playerId)
       default:
         return this.createErrorResult(action.type, `Unknown action type: ${action.type}`)
     }
@@ -713,7 +725,45 @@ class RoomState {
 
     let spent = await this.appendHazardEvents(result, playerId)
     spent = await this.appendSpawnEvents(spent, playerId)
+    spent = await this.appendLairStir(spent, playerId)
     return { ...spent, turnResolved: true }
+  }
+
+  /**
+   * A lair while its boss is about and not out (5 Nov 2026): every turn spent
+   * on something other than the swing — a rest, a search, a swing of a
+   * pickaxe, a potion — is answered by the next stir line (game-data/
+   * lair-lines.js), served in order from the player's cursor like any spoken
+   * line, pinned where any spoken line is and written to the feed as one. The
+   * swing itself goes through the hunt, never here, so Attack calls the boss
+   * out and says nothing else; and once the boss has come out, or while it is
+   * defeated for the player, the lair is quiet.
+   */
+  async appendLairStir(result, playerId) {
+    const boss = getLairBoss(this.roomId)
+    if (!boss) return result
+    if (this.activeBattles.get(playerId)?.isActive) return result
+    if (this.playerEnemyState.get(playerId)?.present) return result
+    await ensureKillSet(playerId).catch(() => null)
+    if (isLairBossResting(playerId, this.roomId)) return result
+
+    const lines = lairStirLines(boss.slug, boss.name)
+    const index = nextLineIndex(playerId, `${this.roomId}|stir`, lines.length)
+    if (index < 0) return result
+    const text = lines[index]
+    return {
+      ...result,
+      playerEvents: [
+        ...(result.playerEvents || []),
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('lair_stir', 'info', text, {
+            roomId: this.roomId,
+            roomLine: { message: text, speaker: boss.name, source: { roomId: this.roomId, speaker: boss.slug, set: 'stir', index }, ts: Date.now() },
+          }),
+        },
+      ],
+    }
   }
 
   /**
@@ -1386,7 +1436,10 @@ class RoomState {
    * Chosen 16 Oct 2026: a hunt is a turn. It bites the room's hazard and rolls
    * the room's table at the room's own odds — not boosted, not guaranteed, so
    * Attack is not a new farming dial — and whatever answers is engaged as the
-   * player's own swing, spell or strike. They were ready for it, so there is no
+   * player's own swing, spell or strike. The one exception is a lair (5 Nov
+   * 2026): there Attack calls the boss out every time, since its rest clock
+   * is what keeps it from being farmed, and while the boss is defeated for
+   * the player the swing finds nothing. They were ready for it, so there is no
    * ambush hit of the kind a search's fresh spawn gets. A neutral that turns up
    * is attacked too: Attack is what was pressed. The grace turn after a win is
    * ignored and spent — it protects a rest or a re-gear, and pressing Attack is
@@ -1421,7 +1474,7 @@ class RoomState {
     // The Mountains' boss slot reads the kill list; make sure it is loaded
     // before the synchronous roll. A no-op once cached.
     await ensureKillSet(playerId).catch(() => null)
-    const slug = this.maybeSpawnEnemy(playerId)
+    const slug = this.maybeSpawnEnemy(playerId, { summon: true })
     const enemy = slug ? getEnemy(slug) : null
 
     if (!enemy) {
@@ -1690,6 +1743,36 @@ class RoomState {
         text: heal.text,
       },
     })
+  }
+
+  /**
+   * The temporary tester (5 Nov 2026): clear your rest clock for this lair's
+   * boss, so the next turn action can roll it again. Not a turn, no feed
+   * beyond its own line, refused in a fight and anywhere but the boss's own
+   * lair. The server only knows the action while BOSS_REST_TEST=1 is set
+   * (services/boss-rest-service); the button goes with the flag.
+   */
+  async executeBossRestReset(action, playerId) {
+    const boss = getLairBoss(this.roomId)
+    if (!boss) return this.createErrorResult('boss_rest_reset', 'No boss rests in this room.')
+    if (this.activeBattles.get(playerId)?.isActive) {
+      return this.createErrorResult('boss_rest_reset', 'Not in the middle of a fight.')
+    }
+    const result = await resetBossRest(playerId, boss.slug)
+    if (!result.ok) return this.createErrorResult('boss_rest_reset', result.reason)
+    return {
+      success: true,
+      noTurn: true,
+      action: 'boss_rest_reset',
+      playerEvents: [
+        {
+          event: 'action:feedback',
+          payload: this.createFeedbackPayload('boss_rest_reset', 'info', `Reset: the ${boss.name} is back in the roll.`, {
+            bossRestReset: { slug: boss.slug },
+          }),
+        },
+      ],
+    }
   }
 
   async executeSearch(playerId) {

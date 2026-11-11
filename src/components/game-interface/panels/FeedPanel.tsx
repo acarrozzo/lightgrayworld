@@ -246,6 +246,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
   discovery: 'Discovery',
   'action-feedback': 'Action',
   'enemy-spawn': 'Enemy',
+  'boss-rest': 'Boss',
   teleport: 'Teleport',
   equip: 'Gear',
   pet: 'Pet',

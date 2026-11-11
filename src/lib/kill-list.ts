@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { restingUntilBySlug } from './boss-rest-client'
 import type { KillEntry, KillMark } from '@/lib/game-state'
 import { foundSheetIds, sheetForRoom } from '@/lib/world-atlas'
 
@@ -73,6 +74,8 @@ export interface KillRow {
   /** Fights with it broken off. */
   fled: number
   state: KillState
+  /** Server epoch ms when this boss is back for you; null when it is not resting. */
+  restingUntil: number | null
 }
 
 export interface KillBox {
@@ -114,6 +117,7 @@ export interface KillListInput {
 export function buildKillList({ kills, marks = [], flags, currentRoomId }: KillListInput): KillListModel {
   const killsBySlug = new Map(kills.map((k) => [k.monster, k.kills]))
   const marksBySlug = new Map(marks.map((m) => [m.enemySlug, m]))
+  const resting = restingUntilBySlug(kills as KillEntry[])
   const found = new Set(foundSheetIds(flags, currentRoomId))
   const here = currentRoomId ? sheetForRoom(currentRoomId) : null
 
@@ -127,7 +131,7 @@ export function buildKillList({ kills, marks = [], flags, currentRoomId }: KillL
     const state: KillState = kills > 0 ? 'killed' : losses + fled > 0 ? 'met' : 'unknown'
     if (kills > 0) killedCount += 1
     const list = rowsByArea.get(enemy.area) ?? []
-    list.push({ enemy, kills, losses, fled, state })
+    list.push({ enemy, kills, losses, fled, state, restingUntil: resting[enemy.slug] ?? null })
     rowsByArea.set(enemy.area, list)
   }
 

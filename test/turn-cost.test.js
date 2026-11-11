@@ -403,6 +403,75 @@ test('attack with nothing present hunts: the room rolls, and a find is your own 
   assert.equal(result.playerEvents[1].event, 'battle:start')
 })
 
+// A lair (5 Nov 2026): Attack calls the boss out every time, at any roll; a
+// boss defeated for the player is not there to call, and the swing finds nothing.
+test('a hunt in a lair calls the boss out for certain, unless it is defeated for you', async () => {
+  const { noteKill, clearLastKill } = require(path.join(ROOT, 'src/lib/game-engine/services/kill-list-service.js'))
+  const room = new RoomState('013')
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+
+  // The marsh rolls the Gator at 50%; the hunt does not roll at all.
+  const result = await withRandom(0.99, () => room.executeAttack('p1'))
+  assert.equal(room.getPresentEnemy('p1'), 'gator')
+  assert.equal(battleCalls.startBattle[0].data.enemySlug, 'gator')
+  assert.equal(result.playerEvents[0].payload.action, 'enemy_spawn')
+
+  // Beaten a minute ago: the Gator is down for five, so the swing finds nothing.
+  const rested = new RoomState('013')
+  rested.addPlayer({ id: 'p2', username: 'b', hp: 50 })
+  noteKill('p2', 'gator', Date.now() - 60_000)
+  try {
+    const miss = await withRandom(0, () => rested.executeAttack('p2'))
+    assert.equal(rested.getPresentEnemy('p2'), null)
+    assert.equal(miss.turnResolved, true)
+    assert.match(miss.playerEvents[0].payload.message, /nothing shows itself/)
+  } finally {
+    clearLastKill('p2', 'gator')
+  }
+})
+
+// A lair's stir line (5 Nov 2026): a rest or a search while the boss is about
+// and not out serves the next line, in order; the swing itself says nothing
+// but calls the boss out; a defeated boss leaves the lair quiet.
+test('a turn spent in a lair on anything but the swing is answered by the next stir line', async () => {
+  const { noteKill, clearLastKill } = require(path.join(ROOT, 'src/lib/game-engine/services/kill-list-service.js'))
+  const { clearLineCursors } = require(path.join(ROOT, 'src/lib/game-engine/line-cursor-state.js'))
+  const stir = (result) => (result.playerEvents || []).filter((e) => e.payload?.action === 'lair_stir')
+  // A rest's result as it reaches the turn tail; the tail is where the lair answers.
+  const rest = (room, playerId) => room.resolveTurn({ success: true, action: 'rest', playerEvents: [] }, playerId, { label: 'Rest' })
+  const room = new RoomState('013')
+  room.addPlayer({ id: 'p1', username: 'a', hp: 50 })
+  clearLineCursors('p1')
+
+  // Two rests the Gator sleeps through: two lines, in the set's order, pinned and tagged.
+  const first = await withRandom(0.99, () => rest(room, 'p1'))
+  const second = await withRandom(0.99, () => rest(room, 'p1'))
+  assert.equal(stir(first).length, 1)
+  assert.equal(stir(second).length, 1)
+  const line1 = stir(first)[0].payload.data.roomLine
+  const line2 = stir(second)[0].payload.data.roomLine
+  assert.deepEqual(line1.source, { roomId: '013', speaker: 'gator', set: 'stir', index: 0 })
+  assert.equal(line2.source.index, 1)
+  assert.equal(line1.speaker, 'Gator')
+  assert.notEqual(line1.message, line2.message)
+
+  // The rest that brings the Gator out says nothing more: the boss is the answer.
+  const found = await withRandom(0, () => rest(room, 'p1'))
+  assert.equal(room.getPresentEnemy('p1'), 'gator')
+  assert.equal(stir(found).length, 0)
+
+  // Defeated: quiet.
+  const quiet = new RoomState('013')
+  quiet.addPlayer({ id: 'p2', username: 'b', hp: 50 })
+  noteKill('p2', 'gator', Date.now() - 60_000)
+  try {
+    const rested = await withRandom(0.99, () => rest(quiet, 'p2'))
+    assert.equal(stir(rested).length, 0)
+  } finally {
+    clearLastKill('p2', 'gator')
+  }
+})
+
 test('a hunt that finds nothing says so, and the turn is spent', async () => {
   const room = new RoomState(MINE)
   room.addPlayer({ id: 'p1', username: 'a', hp: 50 })

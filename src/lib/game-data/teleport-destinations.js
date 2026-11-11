@@ -49,19 +49,21 @@ const HUB_ROOMS = new Set(BY_ROOM.keys())
 
 /**
  * The boss landings, highest level first — the order the Travel tab shows
- * them. Every enemy tagged `rank: 'boss'` with a `lair` in enemies.js is one
- * (read from bosses.generated.js, the browser-sized copy), except where the
- * lair is already a hub — the Hydra Pit and the Master Temple sub-hubs — so no
- * room gets two tiles. A boss with no lair (King Blade, who roams the mountain
- * ladder) has no landing. The original's page drew seventeen buttons and
- * could reach thirteen of them; this list is whatever the registry says.
+ * them. Every ranked enemy (boss or miniboss) with a `lair` in enemies.js is
+ * one (read from bosses.generated.js, the browser-sized copy), except where
+ * the lair is already a hub — the Master Temple sub-hub — so no room gets two
+ * tiles. Since 5 Nov 2026 the ladder and the rest clocks (boss-rest.js) are one
+ * list: what you can teleport to is what rests after a kill. A ranked enemy
+ * with no lair (King Blade, who roams the mountain ladder) has no landing. The
+ * original's page drew seventeen buttons and could reach thirteen of them;
+ * this list is whatever the registry says.
  *
  * Each costs the boss's level in MP: the original charged three times the
  * *player's* level, a flat tax that made the Gator as dear as the Minotaur;
  * pricing the destination instead keeps an early rematch cheap and a late one
  * a real cast.
  */
-const BOSS_TELEPORTS = BOSSES.filter((boss) => boss.rank === 'boss' && boss.lair && !HUB_ROOMS.has(boss.lair))
+const BOSS_TELEPORTS = BOSSES.filter((boss) => boss.rank && boss.lair && !HUB_ROOMS.has(boss.lair))
   .map((boss) => ({ ...boss, roomId: boss.lair, cost: boss.level }))
   .sort((a, b) => b.level - a.level || a.name.localeCompare(b.name))
 

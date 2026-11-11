@@ -1,6 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { useCountdown } from './useCountdown'
+import { formatCountdown } from '@/lib/boss-rest-client'
 import { Map as MapIcon } from 'lucide-react'
 import EntryRow, { EntryVerb } from '@/components/EntryRow'
 import EnemyTraitTags from '@/components/EnemyTraitTags'
@@ -98,6 +100,8 @@ export interface TravelRowsProps {
   onShowOnMap?: (roomId: string) => void
   /** Sheet ids the player has found. */
   foundMapIds?: string[]
+  /** Server epoch ms when each defeated boss gets back up (lib/boss-rest-client). */
+  restingUntilBySlug?: Record<string, number>
   /** Off, only `retreat` is drawn. */
   rows?: boolean
 }
@@ -165,7 +169,7 @@ function Ladder({ label, note, tone }: { label: string; note?: string; tone: str
  * a chip, and each row keeps its own sheet's colour. VIP is the row the
  * original kept past the end of the page.
  */
-export default function TravelRows({ currentRoomId, discoveredTeleports, memberships = [], blockedReason, bosses, playerMp, onTeleport, retreat, rows = true, onShowOnMap, foundMapIds = [] }: TravelRowsProps) {
+export default function TravelRows({ currentRoomId, discoveredTeleports, memberships = [], blockedReason, bosses, playerMp, onTeleport, retreat, rows = true, onShowOnMap, foundMapIds = [], restingUntilBySlug = {} }: TravelRowsProps) {
   /** The map button for a landing whose sheet has been found, else nothing. */
   const mapButton = (roomId: string, name: string) => {
     const sheetId = getMapIdForRoom(roomId)
@@ -252,6 +256,7 @@ export default function TravelRows({ currentRoomId, discoveredTeleports, members
             <span className="shrink-0 rounded border border-resource-gold/40 bg-resource-gold/15 px-1 text-[9px] font-bold uppercase tracking-wider leading-[14px] text-resource-gold">
               L{boss.level}
             </span>
+            {restingUntilBySlug[boss.slug] != null && <RestingChip until={restingUntilBySlug[boss.slug]} name={boss.name} />}
             {sheetLevel && (
               <span className="shrink-0 rounded border border-line-strong px-1 text-[9px] font-semibold uppercase tracking-wider leading-[14px] text-fg-muted">
                 {sheetLevel}
@@ -339,5 +344,22 @@ export default function TravelRows({ currentRoomId, discoveredTeleports, members
       <Ladder label="VIP" tone="text-fg-muted" />
       <div className="flex flex-col gap-1.5">{(VIP_REGIONS as WorldRegion[]).map((region) => hubRow(region, true))}</div>
     </div>
+  )
+}
+
+/**
+ * "DEFEATED 4:32" beside a beaten boss: it is down for you until then, and
+ * the teleport still works — the lair is safe and may hold its Boss Chest.
+ */
+function RestingChip({ until, name }: { until: number; name: string }) {
+  const left = useCountdown(until)
+  if (left <= 0) return null
+  return (
+    <span
+      className="shrink-0 rounded border border-status-info/50 bg-status-info/15 px-1 text-[9px] font-bold uppercase tracking-wider leading-[14px] text-status-info tabular-nums"
+      title={`The ${name} is down for you for another ${formatCountdown(left)}. Its lair is safe until then.`}
+    >
+      Defeated {formatCountdown(left)}
+    </span>
   )
 }

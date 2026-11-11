@@ -1,3 +1,4 @@
+import type { BossRestView } from './types/room'
 import { Server } from 'socket.io'
 import type { LedgerTurn } from './fight-ledger'
 
@@ -343,6 +344,8 @@ export interface BattleSummary {
   dropDetails?: BattleDropDetail[]
   multiplayerBonus: boolean
   lastTurn: BattleLastTurn | null
+  /** Set when the enemy is a lair boss: how long it rests from this kill. */
+  bossRest?: BossRestView | null
 }
 
 export interface BattleDropDetail {
@@ -398,6 +401,8 @@ export interface BattleVictoryPayload {
   clearRoomEnemies?: boolean
   /** The whole fight as ledger rows, the killing turn included. */
   turns?: LedgerTurn[]
+  /** The boss's rest, when the enemy was a lair boss (also on `summary`). */
+  bossRest?: BossRestView | null
 }
 
 export interface BattleDefeatPayload {

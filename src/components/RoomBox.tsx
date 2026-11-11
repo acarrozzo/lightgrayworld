@@ -8,11 +8,13 @@ import type { GatherCooldownView, SupplyView } from '@/lib/types/room'
 import Icon from './Icon'
 import { DangerLine } from './game-interface/CompassLedger'
 import { useGameStore } from '@/lib/game-state'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { roomColor } from '@/lib/theme/room-colors'
 import { getEnemyTraits } from '@/lib/game-data/enemy-traits'
 import EnemyTraitTags from './EnemyTraitTags'
 import VitalBar from './game-interface/VitalBar'
+import LairBossBox, { BossInfoButton } from './game-interface/LairBossBox'
+import BossInfo, { type BoardPlayer } from './game-interface/BossInfo'
 
 const DIRECTIONS = [
   'north',
@@ -76,6 +78,8 @@ interface RoomBoxProps {
   isPartyMember?: boolean
   quests?: Array<{ id: string; questId: string; progress: number; completed: boolean }>
   killList?: { monster: string; kills: number }[]
+  /** The lair's resting boss got back up on this page's clock. */
+  onBossRestEnded?: () => void
 }
 
 export default function RoomBox({
@@ -98,7 +102,21 @@ export default function RoomBox({
   isPartyMember = false,
   quests = [],
   killList = [],
+  onBossRestEnded,
 }: RoomBoxProps) {
+
+  // Boss Info (the leaderboard, the enemy's page) unfolds inside the boss's
+  // box (the lair box or the standing enemy's). It folds when the room changes.
+  const [boardOpen, setBoardOpen] = useState(false)
+  const toggleBoard = useCallback(() => setBoardOpen((v) => !v), [])
+  // A name on the Leaderboard opens that player's card, as a name in the room does.
+  const openBoardPlayer = useCallback(
+    (p: BoardPlayer) => onOpenPlayerProfile?.({ id: p.id, username: p.username, level: p.level } as Player),
+    [onOpenPlayerProfile]
+  )
+  useEffect(() => {
+    setBoardOpen(false)
+  }, [room.id])
 
   // A departure note stays up long enough to be read, then goes on its own.
   // Keyed on the note's timestamp so a new departure restarts the clock.
@@ -192,6 +210,22 @@ export default function RoomBox({
       {/* Room Description */}
       <p className="text-fg-primary/90 leading-relaxed text-sm @md:text-base">{room.description}</p>
 
+      {/* The lair's boss while it is not standing here: defeated (the clock,
+          the Boss Chest) or not here yet (Attack draws it out). The box is always
+          drawn in a lair, so the room never reads as empty of its boss. */}
+      {!roomEnemy && !isInBattle && room.lairBoss && (
+        <LairBossBox
+          boss={room.lairBoss}
+          bossRest={room.bossRest ?? null}
+          onAction={onAction}
+          boardOpen={boardOpen}
+          onToggleBoard={toggleBoard}
+          onOpenPlayer={onOpenPlayerProfile ? openBoardPlayer : undefined}
+          onEnded={onBossRestEnded}
+          disabled={isLoadingRoom}
+        />
+      )}
+
       {/* Enemy in Room — one at a time, as in the original. In a narrow
           column the Attack button drops to its own line under the stats. */}
       {roomEnemy && (
@@ -235,7 +269,7 @@ export default function RoomBox({
             </div>
             <EnemyTraitTags traits={getEnemyTraits(roomEnemy)} className="mt-1.5" />
           </div>
-          <div className="flex basis-full justify-end @md:basis-auto @md:ml-1">
+          <div className="flex basis-full justify-end gap-2 @md:basis-auto @md:ml-1">
             <button
               onClick={() => onAction({ type: 'start_battle', data: { enemySlug: roomEnemy.slug } })}
               disabled={isInBattle || isLoadingRoom}
@@ -244,7 +278,9 @@ export default function RoomBox({
             >
               Attack
             </button>
+            {roomEnemy.rank && <BossInfoButton name={roomEnemy.name} open={boardOpen} onToggle={toggleBoard} disabled={isLoadingRoom} />}
           </div>
+          {roomEnemy.rank && boardOpen && <BossInfo slug={roomEnemy.slug} name={roomEnemy.name} onOpenPlayer={onOpenPlayerProfile ? openBoardPlayer : undefined} />}
         </div>
       )}
 

@@ -228,6 +228,10 @@ model KillList {
   userId  String
   monster String
   kills   Int    @default(0)
+  /// When this player last put the enemy down. A ranked enemy with a lair rests
+  /// from this moment (game-data/boss-rest.js): stripped from its lair's roll,
+  /// the lair SAFE, its hoard open once. Null on rows older than the clock.
+  lastKilledAt DateTime?
   user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, monster])

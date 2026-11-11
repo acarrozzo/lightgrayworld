@@ -58,7 +58,8 @@ test('within a region: lowest level first; a tie goes to the sheet nearer the su
   // Anthony's examples. Rocky Flats: the Death Worm (23) above the Axeman
   // (25); Red Beard (30, surface) above Phoenix (30, the Mine).
   const byRegion = new Map(groupBossTeleportsByRegion(BOSS_TELEPORTS).map((g) => [g.region.id, g.bosses.map((b) => b.slug)]))
-  assert.deepEqual(byRegion.get('rocky-flats'), ['mongolian-death-worm', 'possessed-axeman', 'red-beard', 'phoenix', 'cyclops', 'minotaur'])
+  // The mine guards (minibosses with lairs since 5 Nov 2026) sit in the ladder by level.
+  assert.deepEqual(byRegion.get('rocky-flats'), ['mongolian-death-worm', 'possessed-axeman', 'war-turtle', 'red-beard', 'phoenix', 'ulfberht', 'cyclops', 'griffin', 'minotaur'])
   // Blue Ocean: the Kraken (25, underwater) above the four L35 surface bosses.
   assert.equal(byRegion.get('ocean')[0], 'kraken')
 })

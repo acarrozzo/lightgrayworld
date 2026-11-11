@@ -15,11 +15,11 @@
 //            registry; the enemy only declares which it carries. Omit the field entirely
 //            for enemies that just attack normally.
 //
-// rank     — optional 'boss' | 'miniboss'. A boss is a unique, named enemy with a lair of its
-//            own; a miniboss is unique and named but rolls in among a region's ordinary spawns
-//            (the mountain ladder's Jikay and Jiemji, the Dragon) or shares someone else's lair
-//            (Victoria beside Omar). Ordinary enemies have no rank. Shown as a tag on the room
-//            card, in battle and in the World Tool.
+// rank     — optional 'boss' | 'miniboss'. Both are unique, named enemies; the word is the
+//            tag the room card, the battle and the World Tool show, and a miniboss rests half
+//            as long (game-data/boss-rest.js). Most have a lair; the ones that do not roll in
+//            among a region's ordinary spawns (the mountain ladder's Jikay, Jiemji and King
+//            Blade). A strong regular enemy (the Dragon, the Hydra, the Crocodile) has no rank.
 // area     — the Kill List box the enemy is listed in (game-data/kill-list-areas.js): the
 //            original's 27 boxes in world order, finer than `zone`. Every enemy has one,
 //            placed where the original listed it; the enemies the original never had
@@ -28,9 +28,12 @@
 //            flag, kept as the original wrote it, never derived from spawn weights.
 // nameTone — the color the original's Kill List wrote the name in (kill-list-areas.js
 //            KL_TONES): the bosses and a few named oddities carry one, plain enemies none.
-// lair     — the boss's own room. Its first kill opens a Travel-tab teleport that lands there
-//            (teleport-destinations.js), costing the boss's level in MP. A boss with no lair
-//            (King Blade, who climbs the ladder across the whole mountain) has no teleport.
+// lair     — the ranked enemy's own room, where it rolls alone (room-enemies.js). Its first
+//            kill opens a Travel-tab teleport that lands there (teleport-destinations.js),
+//            costing its level in MP, and every kill after rests it for a while
+//            (game-data/boss-rest.js): the lair reads SAFE and holds its Boss Chest until it is
+//            back. A ranked enemy with no lair (King Blade, who climbs the ladder across the
+//            whole mountain) has no teleport and no rest.
 //            scripts/generate-bosses.js copies the ranked enemies to bosses.generated.js for
 //            the browser; run it (or npm run dev/build) after changing a ranked enemy.
 const STANDARD_MAIN_DROP = [
@@ -1749,6 +1752,7 @@ const ENEMIES = [
     icon: 'enemy-VictoriatheDead',
     level: 17,
     rank: 'miniboss',
+    lair: '232v',
     hp: 250,
     att: 50,
     def: 15,
@@ -2955,6 +2959,7 @@ const ENEMIES = [
     icon: 'enemy-WarTurtle',
     level: 25,
     rank: 'miniboss',
+    lair: '311-05',
     hp: 800,
     att: 80,
     def: 60,
@@ -3020,6 +3025,7 @@ const ENEMIES = [
     icon: 'enemy-Ulfberht',
     level: 35,
     rank: 'miniboss',
+    lair: '311-15',
     hp: 800,
     att: 120,
     def: 120,
@@ -3084,6 +3090,7 @@ const ENEMIES = [
     icon: 'enemy-Griffin',
     level: 50,
     rank: 'miniboss',
+    lair: '311-25',
     hp: 1500,
     att: 250,
     def: 150,
@@ -3192,6 +3199,7 @@ const ENEMIES = [
     icon: 'enemy-KingSquid',
     level: 40,
     rank: 'miniboss',
+    lair: '421',
     hp: 300,
     att: 120,
     def: 240,
@@ -3228,7 +3236,8 @@ const ENEMIES = [
     description: 'A beast made completely of stone, and it guards the Dark Keep\'s stairwell as well as the mountain pass. Arrows shatter on it and magic slides off; it does not answer questions.',
     icon: 'enemy-StoneSphinx',
     level: 50,
-    rank: 'miniboss',
+    rank: 'boss',
+    lair: '516d',
     hp: 2000,
     att: 150,
     def: 150,
@@ -3433,7 +3442,6 @@ const ENEMIES = [
     description: 'A vicious crocodile out of the tornado currents around Crocodile Island. Its bite goes straight through armour.',
     icon: 'enemy-Crocodile',
     level: 25,
-    rank: 'miniboss',
     hp: 500,
     att: 100,
     def: 50,
@@ -4574,7 +4582,6 @@ const ENEMIES = [
     description: 'Ferocious dragons have been seen soaring among the mountain tops. It flies, it breathes, and the breath does not care what you are wearing.',
     icon: 'enemy-Dragon',
     level: 60,
-    rank: 'miniboss',
     hp: 2500,
     att: 250,
     def: 250,
@@ -4967,8 +4974,6 @@ const ENEMIES = [
     description: 'Three heads, and every one of them is looking at you. It lives in the pit at the bottom of the Despair and does not leave it.',
     icon: 'enemy-Hydra',
     level: 50,
-    rank: 'boss',
-    lair: '905',
     hp: 2000,
     att: 200,
     def: 200,
@@ -5271,7 +5276,7 @@ const ENEMIES = [
     description: 'Lion, goat and serpent, and all three breathe. Only arrows reach it: blades bounce, spells fizzle.',
     icon: 'enemy-Chimera',
     level: 80,
-    rank: 'boss',
+    rank: 'miniboss',
     lair: '911',
     hp: 8000,
     att: 600,
@@ -5296,7 +5301,7 @@ const ENEMIES = [
     description: 'The king of serpents. Its bite is venom, it is quick for its size, and it does not miss much.',
     icon: 'enemy-Basilisk',
     level: 80,
-    rank: 'boss',
+    rank: 'miniboss',
     lair: '914',
     hp: 8000,
     att: 600,
@@ -5321,7 +5326,7 @@ const ENEMIES = [
     description: 'Her hair moves on its own and her eyes do the rest. She is hard to hit and harder to look at.',
     icon: 'enemy-Medusa',
     level: 80,
-    rank: 'boss',
+    rank: 'miniboss',
     lair: '927',
     hp: 8000,
     att: 600,
@@ -5346,7 +5351,7 @@ const ENEMIES = [
     description: 'Three heads, three bites a turn, and a howl that is magic. The door it guards is the Skeleton King\'s.',
     icon: 'enemy-Cerberus',
     level: 80,
-    rank: 'boss',
+    rank: 'miniboss',
     lair: '918',
     hp: 8000,
     att: 600,
@@ -5370,7 +5375,7 @@ const ENEMIES = [
     description: 'A lion with a man\'s face and a scorpion\'s tail, and the tail is the part to watch: when it lands clean, it lands ten times.',
     icon: 'enemy-Manticore',
     level: 80,
-    rank: 'boss',
+    rank: 'miniboss',
     lair: '922',
     hp: 8000,
     att: 600,
