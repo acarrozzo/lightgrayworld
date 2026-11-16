@@ -8,8 +8,9 @@
 // `lastActive` timestamp comes from.
 //
 // Room-scoped presence (player-joined / player-left / player-idle / player-returned)
-// is unchanged and still drives the room's "Others here" list. This store powers the
-// single *global* roster feed the Players tab subscribes to. Both are fanned out from
+// still drives the room's "Others here" list as it changes. This store powers the
+// single *global* roster feed the Players tab subscribes to, and is what every
+// room list is *built* from (services/room-occupants.js). Both are fanned out from
 // the same call sites so the two views cannot disagree.
 //
 // Process-local, like ghost-player-store: it disappears on restart, which is correct —
@@ -44,7 +45,14 @@ function setPresence(playerData, overrides = {}) {
     currentRoom: playerData.currentRoom ?? null,
     uIcon: playerData.uIcon ?? null,
     uIconColor: playerData.uIconColor ?? null,
+    // 'active' or 'idle'. Idle is a fact about the *player*, kept here and
+    // nowhere else: it used to be a ghost entry pinned to the room they went
+    // quiet in, so a follower pulled along by their leader arrived looking
+    // wide awake, and a refresh forgot who was idle altogether.
     status: 'active',
+    // Epoch ms of their last activity while idle (when they went quiet), else
+    // null. Durations are counted from this, not from when the sweep noticed.
+    idleSince: null,
     inBattle: existing?.inBattle ?? false,
     battleEnemyName: existing?.battleEnemyName ?? null,
     partyLeaderId: playerData.partyLeaderId ?? existing?.partyLeaderId ?? null,

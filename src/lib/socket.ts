@@ -637,6 +637,10 @@ export interface PlayerInfo {
   pet?: string | null
   /** The title they wear (User.title): the Pillar's name or a guild's, or null. */
   title?: string | null
+  /** A follower pulled along by their leader can arrive idle. Absent means active. */
+  presenceStatus?: 'active' | 'idle'
+  /** With `presenceStatus: 'idle'`: server epoch ms of when they went quiet. */
+  lastSeen?: number
   entryDirection?: string | null
   isTeleport?: boolean
 }
@@ -660,8 +664,10 @@ export interface PresencePlayer {
   currentRoom: string | null
   uIcon?: string | null
   uIconColor?: string | null
-  /** 'idle' mirrors the room-scoped idle detection; 'disconnected' never appears here. */
+  /** Where idle lives: every room list and the party rail read it from here. 'disconnected' never appears. */
   status: 'active' | 'idle'
+  /** Server epoch ms of their last activity while idle (when they went quiet); null while active. */
+  idleSince?: number | null
   inBattle: boolean
   /** What they are fighting, while they are fighting. Null otherwise. */
   battleEnemyName?: string | null

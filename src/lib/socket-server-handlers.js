@@ -68,7 +68,14 @@ const {
   updatePresence,
   departPresence,
   buildPresenceSync,
+  getPresence,
 } = require('./services/presence-store.js')
+const { buildRoomOccupants, presenceFieldsFor } = require('./services/room-occupants.js')
+
+// "Still here" pings (PLAYER_ACTIVITY) are throttled per connection on the
+// server as well as on the client; one every 10 seconds is already far more
+// than a 5 minute idle threshold needs.
+const ACTIVITY_PING_MIN_MS = 10 * 1000
 
 /**
  * Whether the engine's live record of the player in this room says dead (HP 0).
@@ -351,6 +358,9 @@ function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlaye
       partyLeaderId: partyStore.getLeaderId(player.id),
       pet: player.activePet ?? null,
       title: player.title ?? null,
+      // Not everyone who arrives is awake: a follower pulled along by their
+      // leader never acted, and is still idle in the new room.
+      ...presenceFieldsFor(player.id),
       entryDirection: entryDirection || null,
       isTeleport: isTeleport || false,
     })
@@ -362,8 +372,10 @@ function createTransitionPlayerRoom(io, prisma, socket, activePlayers, roomPlaye
     player.previousRoom = previousRoom
     player.currentRoom = toRoom
     // The room-scoped events above tell the two rooms involved; this tells everyone
-    // else's roster where the player went.
-    updatePresence(io, player.id, { currentRoom: toRoom, status: 'active' })
+    // else's roster where the player went. Moving does not by itself wake an
+    // idle player: a move of their own was already counted as activity by the
+    // handler that asked for it, and a pull by their leader is not theirs.
+    updatePresence(io, player.id, { currentRoom: toRoom })
     // Re-broadcast party groupings so the mover (and the room) see current parties.
     if (broadcastRoomPartyState) broadcastRoomPartyState(toRoom)
     activePlayers.set(socket.id, player)
@@ -713,30 +725,31 @@ function applyTitleChange({ io, player, title }) {
 function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers, userIdToSocketIds = new Map()) {
   const idleDetectionService = createIdleDetectionService({
     activePlayers,
-    onStateChange: (userId, username, roomId, isIdle) => {
-      if (!roomId) return
+    // Idle lives on the presence entry (status + idleSince), which is what the
+    // roster, the party rail and every room list read. The room event is only
+    // the live nudge for people already looking at the card.
+    onStateChange: (userId, username, roomId, isIdle, lastActive) => {
       if (isIdle) {
-        // Find full player data for the ghost entry
-        let playerData = null
-        for (const p of activePlayers.values()) {
-          if (p.id === userId) { playerData = p; break }
+        const idleSince = Number.isFinite(lastActive) ? lastActive : Date.now()
+        updatePresence(io, userId, { status: 'idle', idleSince })
+        if (roomId) {
+          io.to(`room-${roomId}`).emit(SOCKET_EVENTS.PLAYER_IDLE, {
+            id: userId,
+            username,
+            roomId,
+            // When they went quiet, not when the sweep noticed.
+            lastSeen: idleSince,
+          })
         }
-        if (playerData) addGhost(roomId, playerData, 'idle')
-        io.to(`room-${roomId}`).emit(SOCKET_EVENTS.PLAYER_IDLE, {
-          id: userId,
-          username,
-          roomId,
-          lastSeen: Date.now(),
-        })
-        updatePresence(io, userId, { status: 'idle' })
       } else {
-        removeGhost(roomId, userId)
-        io.to(`room-${roomId}`).emit(SOCKET_EVENTS.PLAYER_RETURNED, {
-          id: userId,
-          username,
-          roomId,
-        })
-        updatePresence(io, userId, { status: 'active' })
+        updatePresence(io, userId, { status: 'active', idleSince: null })
+        if (roomId) {
+          io.to(`room-${roomId}`).emit(SOCKET_EVENTS.PLAYER_RETURNED, {
+            id: userId,
+            username,
+            roomId,
+          })
+        }
       }
     },
   })
@@ -1046,59 +1059,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
    * when the payload is built. The client filters itself out of the room list,
    * but the HTTP load includes the viewer and the shape should not differ.
    */
-  const buildLiveRoomPlayers = (roomId, arrivingPlayer) => {
-    const roomState = gameEngine.getOrCreateRoom(roomId)
-    const ghosts = new Map(getGhostsForRoom(roomId).map((g) => [g.id, g]))
-    const seen = new Set()
-    const players = []
-
-    const pushLive = (p) => {
-      if (!p?.id || seen.has(p.id)) return
-      seen.add(p.id)
-      const battle = roomState.activeBattles.get(p.id)
-      // A player can be connected and idle at once; the ghost entry is what
-      // remembers that, and the room list shows it the way a live idle event would.
-      const idleGhost = ghosts.get(p.id)
-      const isIdle = idleGhost?.status === 'idle'
-      players.push({
-        id: p.id,
-        username: p.username,
-        level: p.level,
-        hp: p.hp,
-        hpMax: p.hpMax,
-        mp: p.mp,
-        mpMax: p.mpMax,
-        currentRoom: roomId,
-        isActive: true,
-        uIcon: p.uIcon ?? null,
-        uIconColor: p.uIconColor ?? null,
-        str: p.str ?? null,
-        dex: p.dex ?? null,
-        mag: p.mag ?? null,
-        def: p.def ?? null,
-        strMod: p.strMod ?? null,
-        dexMod: p.dexMod ?? null,
-        magMod: p.magMod ?? null,
-        defMod: p.defMod ?? null,
-        inBattle: Boolean(battle && battle.isActive),
-        battleEnemyName: battle && battle.isActive ? battle.enemyName ?? null : null,
-        partyLeaderId: partyStore.getLeaderId(p.id),
-        pet: p.activePet ?? null,
-        title: p.title ?? null,
-        presenceStatus: isIdle ? 'idle' : 'active',
-        ...(isIdle ? { lastSeen: idleGhost.lastSeen } : {}),
-      })
-    }
-
-    if (arrivingPlayer) pushLive(arrivingPlayer)
-    for (const sid of roomPlayers.get(roomId) ?? []) pushLive(activePlayers.get(sid))
-    for (const ghost of ghosts.values()) {
-      if (seen.has(ghost.id)) continue
-      seen.add(ghost.id)
-      players.push({ ...ghost, presenceStatus: ghost.status ?? 'disconnected' })
-    }
-    return players
-  }
+  const buildLiveRoomPlayers = (roomId, arrivingPlayer) =>
+    // One builder for the socket move payload and both HTTP room loads
+    // (services/room-occupants.js). The live player objects here only supply
+    // the stat blocks presence does not carry.
+    buildRoomOccupants(roomId, { detailOf: findActivePlayerById, arriving: arrivingPlayer })
 
   /**
    * The destination room as this player will see it: the room record plus
@@ -1257,22 +1222,24 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
 
       const now = Date.now()
       player.lastActive = new Date(now)
-      const wasIdle = idleDetectionService.markUserActive(player.id)
+      // The sweep's own flag, or presence's: a session that resumed idle after
+      // a reconnect is idle in presence before the sweep has looked at it again.
+      const sweepSaidIdle = idleDetectionService.markUserActive(player.id)
+      const wasIdle = sweepSaidIdle || getPresence(player.id)?.status === 'idle'
 
-      // Any action means the player is no longer idle. Broadcast the return
-      // immediately (and clear their ghost) rather than waiting for the next
-      // idle-detection tick, which markUserActive would otherwise suppress.
-      if (wasIdle && player.currentRoom) {
-        removeGhost(player.currentRoom, player.id)
-        io.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_RETURNED, {
-          id: player.id,
-          username: player.username,
-          roomId: player.currentRoom,
-        })
-        updatePresence(io, player.id, { status: 'active' })
-        createWorldFeedEvent({ userId: player.id, username: player.username, eventType: 'return' }).catch((error) => {
-          console.error('[Socket] Failed to create return world feed event', error)
-        })
+      // Any activity means the player is no longer idle. Broadcast the return
+      // immediately rather than waiting for the next idle-detection tick, which
+      // markUserActive would otherwise suppress. The world feed is not told:
+      // the room card, the roster and the party rail already show it.
+      if (wasIdle) {
+        updatePresence(io, player.id, { status: 'active', idleSince: null })
+        if (player.currentRoom) {
+          io.to(`room-${player.currentRoom}`).emit(SOCKET_EVENTS.PLAYER_RETURNED, {
+            id: player.id,
+            username: player.username,
+            roomId: player.currentRoom,
+          })
+        }
       }
 
       const lastPersisted = lastActivityPersistedAt.get(player.id) || 0
@@ -1303,6 +1270,17 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
       // Beat the teardown and this is the same session resuming, not a new
       // arrival: the party, the fight and the reveals were never let go of.
       const wasReconnect = cancelSessionTeardown(authUser.userId)
+      // A reconnect is not activity. A dropped connection coming back by itself
+      // used to count as the player returning, so somebody away from the
+      // keyboard on bad wifi flipped to active and back to idle every few
+      // minutes. If the session was idle when the socket dropped, it resumes
+      // idle from the same moment; a person who really did press refresh wakes
+      // it with their first pointer move or key (PLAYER_ACTIVITY).
+      const priorPresence = wasReconnect ? getPresence(authUser.userId) : null
+      const resumeIdleSince =
+        priorPresence?.status === 'idle' && Number.isFinite(priorPresence.idleSince)
+          ? priorPresence.idleSince
+          : null
 
       try {
         const previousState = activePlayers.get(socket.id)
@@ -1414,7 +1392,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           // button draws as opened (or not) straight from the reconnect.
           ...projectGoldChestState(dbPlayer),
           socketId: socket.id,
-          lastActive: new Date(),
+          lastActive: resumeIdleSince !== null ? new Date(resumeIdleSince) : new Date(),
         }
 
         activePlayers.set(socket.id, playerData)
@@ -1422,8 +1400,11 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
           userIdToSocketIds.set(playerData.id, new Set())
         }
         userIdToSocketIds.get(playerData.id).add(socket.id)
-        touchPlayerActivity(playerData)
-        announcePresence(io, playerData, { partyLeaderId: partyStore.getLeaderId(playerData.id) })
+        if (resumeIdleSince === null) touchPlayerActivity(playerData)
+        announcePresence(io, playerData, {
+          partyLeaderId: partyStore.getLeaderId(playerData.id),
+          ...(resumeIdleSince !== null ? { status: 'idle', idleSince: resumeIdleSince } : {}),
+        })
         console.log(`[Server] Player ${playerData.username} registered in activePlayers for socket ${socket.id}`)
         console.log(`[Server] activePlayers now has ${activePlayers.size} entries`)
 
@@ -1472,6 +1453,7 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
             partyLeaderId: partyStore.getLeaderId(playerData.id),
             pet: playerData.activePet ?? null,
             title: playerData.title ?? null,
+            ...presenceFieldsFor(playerData.id),
             entryDirection: null, // No direction info on initial login
             isTeleport: false, // Login is not a teleport
           })
@@ -1584,6 +1566,35 @@ function setupSocketHandlers(io, gameEngine, prisma, activePlayers, roomPlayers,
     })
 
     // Handle player movement
+    // "Still here": the page saw a pointer move, a key, or the tab come back.
+    //
+    // Idle used to mean "has not sent a game action", so somebody shopping,
+    // writing a DM (both HTTP) or reading their inventory or the map was
+    // announced as idle while sitting at the keyboard. This is the client
+    // saying otherwise, at most once a minute.
+    //
+    // It is the client's word and nothing else, which is fine only because idle
+    // is cosmetic. Nothing that changes an outcome (a bonus, a reward, a kick)
+    // may ever key off it: that would have to read server-seen actions.
+    //
+    // The ack tells the client whether the ping landed. One sent before login
+    // has finished finds no player, and the client retries on the next input
+    // instead of sitting out its minute.
+    listen(SOCKET_EVENTS.PLAYER_ACTIVITY, (...args) => {
+      const ack = typeof args[args.length - 1] === 'function' ? args[args.length - 1] : null
+      const player = activePlayers.get(socket.id)
+      if (!player) {
+        if (ack) ack({ ok: false })
+        return
+      }
+      const now = Date.now()
+      if (now - (socket.data.lastActivityPingAt || 0) >= ACTIVITY_PING_MIN_MS) {
+        socket.data.lastActivityPingAt = now
+        touchPlayerActivity(player)
+      }
+      if (ack) ack({ ok: true })
+    })
+
     listen('player-move', async (data) => {
       console.log(`[Socket] player-move event received from ${socket.id}:`, data)
       const player = activePlayers.get(socket.id)

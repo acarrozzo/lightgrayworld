@@ -1,7 +1,20 @@
-const { createWorldFeedEvent } = require('./world-feed-event-service.js')
-
 const FIVE_MINUTES_MS = 5 * 60 * 1000
 const CHECK_INTERVAL_MS = 30 * 1000
+
+/**
+ * Idle detection: who is connected but has stopped doing anything.
+ *
+ * This service only decides *when* an account crosses the line and says so
+ * through `onStateChange`. It owns no presentation and writes nothing: the
+ * presence store is where "idle, and since when" lives, and the world feed is
+ * not told at all (an idle line and a return line per player per coffee was
+ * most of the World channel, and a row in the database each time).
+ *
+ * "Since when" is the account's last activity, not the moment the sweep
+ * noticed. The sweep runs every 30 seconds after a 5 minute threshold, so the
+ * moment of noticing is 5 to 5.5 minutes late, and a card built on it read
+ * "idle 0s" for somebody who had been gone five minutes.
+ */
 
 /**
  * One account's most recent activity across all of its sockets.
@@ -18,23 +31,24 @@ const CHECK_INTERVAL_MS = 30 * 1000
  *   marked optional here only so the `= {}` default stays well-typed.
  * @param {number} [options.thresholdMs] - idle after this long without activity
  * @param {number} [options.intervalMs] - how often to sweep for idle players
- * @param {(userId: string, username: string, currentRoom: string|null, isIdle: boolean) => void} [options.onStateChange]
+ * @param {(userId: string, username: string, currentRoom: string|null, isIdle: boolean, lastActive: number) => void} [options.onStateChange]
+ *   `lastActive` is the epoch ms of the account's last activity: when it went
+ *   quiet, for an idle transition.
+ * @param {() => number} [options.now] - clock, injectable for tests
  */
-function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_MS, intervalMs = CHECK_INTERVAL_MS, onStateChange } = {}) {
+function createIdleDetectionService({
+  activePlayers,
+  thresholdMs = FIVE_MINUTES_MS,
+  intervalMs = CHECK_INTERVAL_MS,
+  onStateChange,
+  now = Date.now,
+} = {}) {
   if (!activePlayers || typeof activePlayers.forEach !== 'function') {
     throw new Error('IdleDetectionService requires an activePlayers Map')
   }
 
   let intervalId = null
   const idleStateByUser = new Map()
-
-  async function safeCreateEvent(userId, username, eventType) {
-    try {
-      await createWorldFeedEvent({ userId, username, eventType })
-    } catch (error) {
-      console.error('[IdleDetection] Failed to create world feed event', { userId, username, eventType, error })
-    }
-  }
 
   function snapshotActiveUsers() {
     /** @type {Map<string, IdleSnapshotEntry>} */
@@ -47,7 +61,7 @@ function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_
 
       const lastActiveTs = player.lastActive instanceof Date
         ? player.lastActive.getTime()
-        : new Date(player.lastActive || Date.now()).getTime()
+        : new Date(player.lastActive || now()).getTime()
 
       const current = snapshot.get(player.id)
       if (!current || lastActiveTs > current.lastActive) {
@@ -62,26 +76,30 @@ function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_
     return snapshot
   }
 
+  function notify(userId, data, isIdle) {
+    if (!onStateChange) return
+    try {
+      onStateChange(userId, data.username, data.currentRoom, isIdle, data.lastActive)
+    } catch (error) {
+      console.error('[IdleDetection] onStateChange failed', { userId, isIdle, error })
+    }
+  }
+
   async function runCheck() {
-    const now = Date.now()
+    const nowTs = now()
     const snapshot = snapshotActiveUsers()
     const activeUserIds = new Set(snapshot.keys())
 
     for (const [userId, data] of snapshot.entries()) {
-      const idleDuration = now - data.lastActive
+      const idleDuration = nowTs - data.lastActive
       const isIdle = idleDuration >= thresholdMs
       const state = idleStateByUser.get(userId) || { isIdle: false }
 
+      idleStateByUser.set(userId, { isIdle })
       if (isIdle && !state.isIdle) {
-        idleStateByUser.set(userId, { isIdle: true })
-        await safeCreateEvent(userId, data.username, 'idle')
-        if (onStateChange) onStateChange(userId, data.username, data.currentRoom, true)
+        notify(userId, data, true)
       } else if (!isIdle && state.isIdle) {
-        idleStateByUser.set(userId, { isIdle: false })
-        await safeCreateEvent(userId, data.username, 'return')
-        if (onStateChange) onStateChange(userId, data.username, data.currentRoom, false)
-      } else {
-        idleStateByUser.set(userId, { isIdle })
+        notify(userId, data, false)
       }
     }
 
@@ -100,6 +118,8 @@ function createIdleDetectionService({ activePlayers, thresholdMs = FIVE_MINUTES_
         console.error('[IdleDetection] Error while checking idle players', error)
       })
     }, intervalMs)
+    // The server is kept alive by its sockets, not by this sweep.
+    intervalId.unref?.()
   }
 
   function stop() {
@@ -132,4 +152,3 @@ module.exports = {
   FIVE_MINUTES_MS,
   CHECK_INTERVAL_MS,
 }
-

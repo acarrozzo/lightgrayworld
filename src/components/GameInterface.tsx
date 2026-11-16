@@ -72,6 +72,7 @@ function victoryDropNames(payload: { dropDetails?: { slug: string; qty: number }
 }
 
 import { useGameSocketBindings } from './game-interface/useGameSocketBindings'
+import { usePresenceHeartbeat } from './game-interface/usePresenceHeartbeat'
 import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
 import QuestsPanel, { QUEST_SUB_TABS, type QuestsTab, type BattleLogPreset, type BattleOutcome } from './game-interface/panels/QuestsPanel'
@@ -648,6 +649,8 @@ export default function GameInterface() {
   // presence) live in this hook rather than here — see its own comment for why
   // the battle, party and action-feedback subscriptions deliberately do not.
   useGameSocketBindings(socket, socketHandlers, setWorldTick)
+  // "Still here": input on the page keeps the player from reading as idle.
+  usePresenceHeartbeat(socket, socketHandlers)
 
   // Gather countdowns for the current room. They normally arrive with the room
   // itself — the socket move payload and the HTTP room load both carry them —
@@ -2928,14 +2931,22 @@ export default function GameInterface() {
         roomPartyLeadersRef.current.leaders[playerInfo.id] = playerInfo.partyLeaderId ?? null
       }
 
+      // Arriving is not the same as being awake: a follower pulled along by
+      // their leader comes in idle, and the server says so on the event.
+      const arrivedIdle = playerInfo.presenceStatus === 'idle'
+      const arrival = {
+        ...playerInfo,
+        presenceStatus: arrivedIdle ? ('idle' as const) : ('active' as const),
+        lastSeen: arrivedIdle ? playerInfo.lastSeen : undefined,
+      }
       const currentRoomPlayers = useGameStore.getState().roomPlayers
       const existingIndex = currentRoomPlayers.findIndex((playerItem) => playerItem.id === playerInfo.id)
       if (existingIndex === -1) {
-        setRoomPlayers([...currentRoomPlayers, { ...playerInfo, presenceStatus: 'active' as const }])
+        setRoomPlayers([...currentRoomPlayers, arrival])
       } else {
-        // Re-activate a ghost entry
+        // Replace a ghost entry with the live player
         const updated = [...currentRoomPlayers]
-        updated[existingIndex] = { ...playerInfo, presenceStatus: 'active' as const, lastSeen: undefined }
+        updated[existingIndex] = arrival
         setRoomPlayers(updated)
       }
 

@@ -13,6 +13,10 @@ const eslintConfig = defineConfig([
   {
     ignores: [
       ".next/**",
+      // Build output in a directory of its own (NEXT_DIST_DIR, see next.config.ts):
+      // `.next-preview`, `.next-check`. Compiled chunks, not source; linting them
+      // was failing `npm run check` on a thousand errors nobody wrote.
+      ".next-*/**",
       "out/**",
       "build/**",
       "node_modules/**",

@@ -10,6 +10,8 @@ import { usePresenceStore } from '@/store/presenceStore'
 import { usePartyBattleStore } from '@/store/partyBattleStore'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useLowHpAlerts } from '@/hooks/useLowHpAlerts'
+import { idleLabel, shouldNudgeLeaderIdle } from '@/lib/presence/idle'
+import { useServerNow } from '@/components/game-interface/useServerNow'
 import { EnemyMini, HairBar, MemberAvatar, MemberCard, StateBadge, type MemberAction } from './MemberCard'
 
 /**
@@ -482,6 +484,55 @@ function FollowAsk({
   )
 }
 
+/**
+ * Your leader has been idle a while.
+ *
+ * A follower only moves when their leader does, and nothing said so when the
+ * leader had walked away from the keyboard: the rail just sat there. This is
+ * the same kind of line a follow ask is, under the rail and out of the way,
+ * offering the one thing a pinned follower can do about it.
+ */
+function LeaderIdleNudge({
+  leaderName,
+  label,
+  onLeave,
+  onDismiss,
+}: {
+  leaderName: string
+  /** "idle 12m" or "away 45m". */
+  label: string
+  onLeave: () => void
+  onDismiss: () => void
+}) {
+  return (
+    <div
+      className="flex items-center gap-2.5 rounded-lg border border-status-warning/35 bg-status-warning/10 px-2.5 py-2"
+      role="status"
+    >
+      <div className="min-w-0 flex-1 text-[11px] leading-tight">
+        <div className="text-fg-bright">
+          <b className="font-semibold">{leaderName}</b> has been {label}.
+        </div>
+        <div className="text-[10px] text-fg-muted">You only move when they do.</div>
+      </div>
+      <button
+        type="button"
+        onClick={onLeave}
+        className="shrink-0 rounded-md border border-status-warning/50 px-2.5 py-1.5 text-[11px] font-bold text-status-warning transition-colors hover:bg-status-warning/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+      >
+        Leave party
+      </button>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="shrink-0 rounded-md px-1.5 py-1.5 text-[11px] text-fg-muted transition-colors hover:text-fg-bright focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+      >
+        Wait
+      </button>
+    </div>
+  )
+}
+
 /** How wide the hover card is, in the placement maths and on the element. */
 const PEEK_WIDTH = 248
 
@@ -669,10 +720,23 @@ export default function PartyRail({
   const feedEntries = useWorldFeedStore((s) => s.entries)
   const isLeader = !!party && party.leaderId === currentPlayerId
 
+  // The server's clock, ticking: "Idle 12m" keeps counting on the chips, and
+  // the leader-idle line below arrives without anything else having to happen.
+  const now = useServerNow()
+
   const members = useMemo(
-    () => buildSquad({ party, roomDanger, roomPlayers, presenceById, currentPlayerId, self, glanceById }),
-    [party, roomDanger, roomPlayers, presenceById, currentPlayerId, self, glanceById]
+    () => buildSquad({ party, roomDanger, roomPlayers, presenceById, currentPlayerId, self, glanceById, now }),
+    [party, roomDanger, roomPlayers, presenceById, currentPlayerId, self, glanceById, now]
   )
+
+  // A follower whose leader has been idle a while is offered the way out.
+  // "Wait" holds it for this idle spell only: it is keyed to when the leader
+  // went quiet, so a leader who comes back and wanders off again asks again.
+  const leader = members.find((m) => m.isLeader) ?? null
+  const [waitedOnIdleSince, setWaitedOnIdleSince] = useState<number | null>(null)
+  const leaderIdleSince = leader?.lastSeen ?? null
+  const showLeaderNudge =
+    !!party && !isLeader && !!leader && shouldNudgeLeaderIdle(leader, now) && waitedOnIdleSince !== leaderIdleSince
   const groupBonus = useMemo(
     () => groupBonusPercent(roomPlayers, party, currentPlayerId),
     [roomPlayers, party, currentPlayerId]
@@ -846,6 +910,17 @@ export default function PartyRail({
                 </span>
               )}
             </button>
+          </div>
+        )}
+
+        {showLeaderNudge && leader && (
+          <div className="px-2 pb-2 pt-1.5">
+            <LeaderIdleNudge
+              leaderName={leader.username}
+              label={idleLabel(leader.lastSeen, now).toLowerCase()}
+              onLeave={onLeave}
+              onDismiss={() => setWaitedOnIdleSince(leaderIdleSince)}
+            />
           </div>
         )}
 

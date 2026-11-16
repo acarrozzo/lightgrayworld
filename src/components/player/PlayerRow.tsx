@@ -3,6 +3,7 @@
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import VitalBar from '@/components/game-interface/VitalBar'
+import { idleLabel, idleTier } from '@/lib/presence/idle'
 
 /**
  * The one player-row vocabulary, shared by the party list, the global roster, and
@@ -204,7 +205,14 @@ export function PlayerBadges({ row }: { row: PlayerRowData }) {
           {row.stats.battleEnemyName ? `\u2694 ${row.stats.battleEnemyName}` : 'In Battle'}
         </span>
       )}
-      {presence === 'idle' && <span className="text-[9px] text-status-warning/80">idle</span>}
+      {presence === 'idle' && (
+        <span
+          className={`text-[9px] ${idleTier(row.lastSeen) === 'away' ? 'text-fg-muted' : 'text-status-warning/80'}`}
+          title="Connected, but nothing from them in a while"
+        >
+          {idleLabel(row.lastSeen).toLowerCase()}
+        </span>
+      )}
     </>
   )
 }

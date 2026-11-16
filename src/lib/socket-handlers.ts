@@ -98,6 +98,27 @@ export class SocketEventHandlers {
     return this.emit(SOCKET_EVENTS.USER_LOGOUT, {})
   }
 
+  /**
+   * "Still here": tell the server the page saw input, for idle detection only.
+   * Resolves to whether the ping landed. One sent before login has finished
+   * finds no player on the server and answers false, so the caller can try
+   * again on the next input rather than waiting out its throttle. Not logged:
+   * it fires for as long as somebody is at the keyboard.
+   */
+  sendActivity(): Promise<boolean> {
+    const socket = this.socket
+    if (!socket || !socket.connected) return Promise.resolve(false)
+    return new Promise((resolve) => {
+      try {
+        socket.timeout(5000).emit(SOCKET_EVENTS.PLAYER_ACTIVITY, (error: Error | null, reply?: { ok?: boolean }) => {
+          resolve(!error && reply?.ok === true)
+        })
+      } catch {
+        resolve(false)
+      }
+    })
+  }
+
   // Send chat message
   sendChatMessage(message: string): boolean {
     return this.emit(SOCKET_EVENTS.SEND_CHAT_MESSAGE, { message })

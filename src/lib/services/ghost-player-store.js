@@ -1,3 +1,7 @@
+// Where a player's session ended: the faded "Offline 3h" card left standing in
+// the room for a day. Only ever 'disconnected'. Idle used to be stored here too,
+// pinned to the room the player went quiet in; it is a property of the live
+// player now and lives on their presence entry (presence-store.js).
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
 
 // Global singleton survives Next.js hot-module reloads in dev
@@ -7,7 +11,7 @@ if (!global.__ghostPlayerStore) {
 
 const store = global.__ghostPlayerStore
 
-function addGhost(roomId, playerData, status) {
+function addGhost(roomId, playerData, status = 'disconnected') {
   if (!roomId || !playerData?.id) return
 
   if (!store.has(roomId)) {
@@ -27,7 +31,7 @@ function addGhost(roomId, playerData, status) {
     uIconColor: playerData.uIconColor ?? null,
     pet: playerData.activePet ?? playerData.pet ?? null,
     isActive: false,
-    status, // 'idle' | 'disconnected'
+    status,
     lastSeen: Date.now(),
   })
 }

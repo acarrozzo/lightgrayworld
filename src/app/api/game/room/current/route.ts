@@ -126,57 +126,45 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let activePlayers: Array<{
-      id: string
-      username: string
-      level: number
-      hp: number
-      hpMax: number
-      mp: number
-      mpMax: number
-      currentRoom: string
-      isActive: boolean
-      uIcon: string | null
-      uIconColor: string | null
-      str: number
-      dex: number
-      mag: number
-      def: number
-      strMod: number
-      dexMod: number
-      magMod: number
-      defMod: number
-    }> = []
+    // Who is here is live server state, not the database: the `isActive`
+    // column survives a crash and strands players as online, and it knows
+    // nothing of who is idle or who logged off in this room. The same builder
+    // the socket's move payload uses answers it (services/room-occupants), so
+    // a refresh and a walk into the room show the same people in the same
+    // state. The database is asked only for the stat blocks presence does not
+    // carry, and only for the players presence says are here.
+    let activePlayers: Array<Record<string, unknown>> = []
+    let roomGhosts: Array<Record<string, unknown>> = []
 
     if (user) {
-      activePlayers = await prisma.user.findMany({
-        where: {
-          currentRoom: room.roomId,
-          isActive: true,
-        },
-        select: {
-          id: true,
-          username: true,
-          level: true,
-          hp: true,
-          hpMax: true,
-          mp: true,
-          mpMax: true,
-          currentRoom: true,
-          isActive: true,
-          inFight: true,
-          uIcon: true,
-          uIconColor: true,
-          str: true,
-          dex: true,
-          mag: true,
-          def: true,
-          strMod: true,
-          dexMod: true,
-          magMod: true,
-          defMod: true,
-        },
-      })
+      const { buildRoomOccupants, splitRoomOccupants } = require('@/lib/services/room-occupants')
+      const liveIds: string[] = splitRoomOccupants(buildRoomOccupants(room.roomId)).players.map(
+        (p: { id: string }) => p.id
+      )
+      const statRows = liveIds.length
+        ? await prisma.user.findMany({
+            where: { id: { in: liveIds } },
+            select: {
+              id: true,
+              str: true,
+              dex: true,
+              mag: true,
+              def: true,
+              strMod: true,
+              dexMod: true,
+              magMod: true,
+              defMod: true,
+            },
+          })
+        : []
+      const statsById = new Map(statRows.map((row) => [row.id, row]))
+      // Built again after the read rather than reused from before it: presence
+      // can change during the query, and the list should be as of now.
+      const occupants = splitRoomOccupants(
+        buildRoomOccupants(room.roomId, { detailOf: (id: string) => statsById.get(id) ?? null })
+      )
+      activePlayers = occupants.players
+      roomGhosts = occupants.roomGhosts
     }
 
     const normalizedRoom = normalizeRoomData(room)
@@ -228,6 +216,7 @@ export async function GET(request: NextRequest) {
 
     if (user) {
       payload.players = activePlayers
+      payload.roomGhosts = roomGhosts
 
       const gameEngine = (globalThis as any).gameEngine
 

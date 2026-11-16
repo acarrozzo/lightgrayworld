@@ -43,6 +43,9 @@ const SOCKET_EVENTS = {
   PARTY_SET_NAME: 'party:set-name',
   PARTY_FOLLOW_ANSWER: 'party:follow-answer',
   SEND_PARTY_CHAT_MESSAGE: 'send-party-chat-message',
+  // "Still here": pointer or key input on the page, at most once a minute.
+  // Feeds idle detection only; it is not a game action and costs nothing.
+  PLAYER_ACTIVITY: 'player-activity',
 
   // ── Server to client: session ─────────────────────────────────────────────
   LOGIN_SUCCESS: 'login:success',

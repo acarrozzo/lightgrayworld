@@ -12,6 +12,7 @@ import {
   type RosterEntry,
   type RosterSortOption,
 } from '@/lib/roster/merge-roster'
+import { idleFollowWarning } from '@/lib/presence/idle'
 import { MAP_CONFIG } from '../constants'
 import { getMapIdForRoom } from '../utils'
 
@@ -193,7 +194,11 @@ export default function RosterPanel({
           label: 'Follow',
           variant: 'follow',
           disabled: reason !== null,
-          title: reason ?? `Follow ${entry.username}`,
+          // Somebody idle can be asked, but an ask lasts a minute and they are
+          // not at the keyboard, so the button says so before it is pressed.
+          title:
+            reason ??
+            (entry.presence === 'idle' ? idleFollowWarning(entry.username, entry.lastSeen) : `Follow ${entry.username}`),
           onClick: () => {
             if (reason) return
             onFollow(entry.id)

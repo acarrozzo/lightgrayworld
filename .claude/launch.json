@@ -13,6 +13,18 @@
       ],
       "port": 3100,
       "autoPort": true
+    },
+    {
+      "name": "lg-mini",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4173",
+        "--directory",
+        "public"
+      ],
+      "port": 4173
     }
   ],
   "autoVerify": false

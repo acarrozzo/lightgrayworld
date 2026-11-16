@@ -9,6 +9,8 @@ import { goldChestFlagForRoom } from '@/lib/game-data/gold-chests'
 import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
 import type { PartySnapshot } from '@/lib/socket'
 import { followableHere } from '@/lib/party/squad'
+import { idleFollowWarning, idleLabel, idleTier } from '@/lib/presence/idle'
+import { useServerNow } from '@/components/game-interface/useServerNow'
 import { Check, Hourglass, Lock, UserPlus } from 'lucide-react'
 import SupplyShelf, { SETTLED_TONE } from './SupplyShelf'
 import { getRoomRest } from '@/lib/game-data/room-rests'
@@ -137,7 +139,9 @@ export default function RoomDisplay({
       const now = Date.now()
       return roomPlayers.filter((player) => {
         if (player.id === currentPlayerId) return false
-        if (player.presenceStatus !== 'active' && player.lastSeen) {
+        // An offline ghost fades out after a day. Somebody idle is still
+        // connected and still standing here, however long it has been.
+        if (player.presenceStatus === 'disconnected' && player.lastSeen) {
           return now - player.lastSeen < TWENTY_FOUR_HOURS_MS
         }
         return true
@@ -145,6 +149,9 @@ export default function RoomDisplay({
     },
     [roomPlayers, currentPlayerId]
   )
+  // The server's clock, ticking, so "Idle 12m" keeps counting and turns to
+  // "Away" on its own instead of waiting for something else to redraw the card.
+  const presenceNow = useServerNow()
   // Who among them you could follow: online, not with you already, and either
   // solo or leading — following joins the party somebody leads.
   const followableIds = useMemo(
@@ -555,6 +562,7 @@ export default function RoomDisplay({
                 disabled={isPerformingAction === `look at ${player.username}`}
                 onFollow={followableIds.has(player.id) && onFollow ? () => onFollow(player.id) : undefined}
                 followPending={pendingFollowIds?.has(player.id) ?? false}
+                now={presenceNow}
                 inParty={Boolean(party && (party.leaderId === player.id || party.members.some((m) => m.id === player.id)))}
               />
             ))}
@@ -595,17 +603,24 @@ interface PlayerCardProps {
   followPending?: boolean
   /** Already travelling with the viewer — the rail is their card; this is a face. */
   inParty?: boolean
+  /** The server's clock (useServerNow), for how long somebody has been idle. */
+  now?: number
 }
 
-function PlayerCard({ player, onInspect, disabled, onFollow, followPending = false, inParty = false }: PlayerCardProps) {
+function PlayerCard({ player, onInspect, disabled, onFollow, followPending = false, inParty = false, now }: PlayerCardProps) {
   const presence = player.presenceStatus ?? 'active'
   const isIdle = presence === 'idle'
   const isDisconnected = presence === 'disconnected'
+  // Idle has two depths: gone a few minutes, and Away (past half an hour), which
+  // reads quieter because waiting on them is no longer a plan.
+  const isAway = isIdle && idleTier(player.lastSeen, now) === 'away'
 
   const containerClass = [
     'group flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-fg-bright transition-all duration-200 overflow-hidden active:scale-[0.98]',
     isDisconnected
       ? 'border-line-strong/20 bg-surface-hover/10 opacity-35 grayscale hover:border-line-strong/40 hover:opacity-50'
+      : isAway
+        ? 'border-line-strong/25 bg-surface-hover/10 opacity-45 hover:border-line-strong/50 hover:opacity-70'
       : isIdle
         ? 'border-resource-gold/20 bg-resource-gold/10 opacity-60 hover:border-resource-gold/50 hover:bg-resource-gold/15'
         : 'border-line-strong/30 bg-surface-selected/10 hover:border-stat-mag hover:bg-stat-mag/20 shadow-sm hover:shadow-md hover:shadow-stat-mag/10',
@@ -626,7 +641,7 @@ function PlayerCard({ player, onInspect, disabled, onFollow, followPending = fal
       <div className="relative flex h-12 w-8 items-center justify-center flex-shrink-0">
         <PlayerAvatar uIcon={player.uIcon} uIconColor={player.uIconColor} size="md" />
         {isIdle && (
-          <span className="absolute -top-0.5 -right-1 text-[9px] leading-none" title="Idle">
+          <span className="absolute -top-0.5 -right-1 text-[9px] leading-none" title={isAway ? 'Away' : 'Idle'}>
             💤
           </span>
         )}
@@ -660,8 +675,11 @@ function PlayerCard({ player, onInspect, disabled, onFollow, followPending = fal
             </div>
           ) : null
         })()}
-        {isIdle && player.lastSeen && (
-          <div className="text-[9px] text-resource-gold/80 mt-0.5">Idle {formatTimeAgo(player.lastSeen)}</div>
+        {/* Counted from their last activity, on the server's clock. */}
+        {isIdle && (
+          <div className={`text-[9px] mt-0.5 ${isAway ? 'text-fg-secondary/80' : 'text-resource-gold/80'}`}>
+            {idleLabel(player.lastSeen, now)}
+          </div>
         )}
         {isDisconnected && player.lastSeen && (
           <div className="text-[9px] text-fg-secondary/80 mt-0.5">Offline {formatTimeAgo(player.lastSeen)}</div>
@@ -680,16 +698,32 @@ function PlayerCard({ player, onInspect, disabled, onFollow, followPending = fal
         type="button"
         onClick={onFollow}
         disabled={followPending}
-        title={followPending ? `Waiting for ${player.username} to answer` : `Ask ${player.username} to lead you`}
-        aria-label={followPending ? `Waiting for ${player.username} to answer your request to follow them` : `Ask ${player.username} to lead you`}
+        title={
+          followPending
+            ? `Waiting for ${player.username} to answer`
+            : isIdle
+              ? `Ask ${player.username} to lead you. ${idleFollowWarning(player.username, player.lastSeen, now)}.`
+              : `Ask ${player.username} to lead you`
+        }
+        aria-label={
+          followPending
+            ? `Waiting for ${player.username} to answer your request to follow them`
+            : isIdle
+              ? `Ask ${player.username} to lead you. ${idleFollowWarning(player.username, player.lastSeen, now)}.`
+              : `Ask ${player.username} to lead you`
+        }
         className={`flex w-full items-center justify-center gap-1 rounded-md border py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
           followPending
             ? 'cursor-not-allowed border-line-subtle/50 text-fg-muted'
-            : 'border-resource-mp/45 text-resource-mp/90 hover:bg-resource-mp/20 hover:text-resource-mp'
+            : isIdle
+              ? 'border-line-subtle/60 text-fg-secondary hover:bg-surface-hover/30 hover:text-fg-bright'
+              : 'border-resource-mp/45 text-resource-mp/90 hover:bg-resource-mp/20 hover:text-resource-mp'
         }`}
       >
         {followPending ? <Hourglass size={10} aria-hidden="true" /> : <UserPlus size={10} aria-hidden="true" />}
-        {followPending ? 'Asked…' : 'Follow'}
+        {/* An ask lasts a minute. Somebody idle is not there to answer it, so
+            the button says so before it is pressed rather than after. */}
+        {followPending ? 'Asked…' : isAway ? 'Follow · away' : isIdle ? 'Follow · idle' : 'Follow'}
       </button>
     )}
     </div>

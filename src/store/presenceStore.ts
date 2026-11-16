@@ -2,6 +2,7 @@
 
 import { create } from 'zustand'
 import type { PresencePlayer } from '@/lib/socket'
+import { noteServerTime } from '@/lib/presence/idle'
 
 export type { PresencePlayer }
 
@@ -29,25 +30,34 @@ export const usePresenceStore = create<PresenceState>((set) => ({
 
   // A sync replaces the roster wholesale — anyone missing from the snapshot has
   // genuinely gone offline, so merging would leave stale ghosts behind.
-  syncPresence: (players, serverTime) =>
+  // Every message carries the server's time. It is noted for the idle clock
+  // (lib/presence/idle), so "idle 12m" is counted on the server's clock and
+  // not this machine's.
+  syncPresence: (players, serverTime) => {
+    noteServerTime(serverTime)
     set(() => ({
       byUserId: Object.fromEntries(players.map((p) => [p.id, p])),
       syncedAt: serverTime,
-    })),
+    }))
+  },
 
-  upsertPresence: (player, serverTime) =>
+  upsertPresence: (player, serverTime) => {
+    noteServerTime(serverTime)
     set((state) => ({
       byUserId: { ...state.byUserId, [player.id]: player },
       syncedAt: serverTime,
-    })),
+    }))
+  },
 
-  removePresence: (id, serverTime) =>
+  removePresence: (id, serverTime) => {
+    noteServerTime(serverTime)
     set((state) => {
       if (!state.byUserId[id]) return { syncedAt: serverTime }
       const next = { ...state.byUserId }
       delete next[id]
       return { byUserId: next, syncedAt: serverTime }
-    }),
+    })
+  },
 
   clearPresence: () => set({ byUserId: {}, syncedAt: null }),
 }))

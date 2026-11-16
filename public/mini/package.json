@@ -1,0 +1,6 @@
+{
+  "name": "light-gray-mini",
+  "private": true,
+  "type": "module",
+  "description": "Light Gray Mini: static files, no build step. This file only tells Node the scripts are ES modules, for the tests."
+}

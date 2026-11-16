@@ -2,6 +2,7 @@ import type { Player } from '@/lib/game-state'
 import type { PartyMemberBattlePayload, PartySnapshot, PresencePlayer } from '@/lib/socket'
 import type { PlayerPresenceStatus, PlayerRowStats } from '@/components/player/PlayerRow'
 import { dangerVerdict } from '@/lib/danger-verdict'
+import { idleLabel } from '@/lib/presence/idle'
 
 /**
  * One party member as every party surface needs them.
@@ -101,18 +102,7 @@ function deriveState(m: {
   return 'ready'
 }
 
-function shortAgo(ts?: number | null): string {
-  if (!ts) return ''
-  const seconds = Math.max(0, Math.floor((Date.now() - ts) / 1000))
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h`
-  return `${Math.floor(hours / 24)}d`
-}
-
-function deriveLabel(m: SquadMember): string {
+function deriveLabel(m: SquadMember, now?: number): string {
   switch (m.state) {
     case 'down':
       return 'Fallen'
@@ -122,10 +112,9 @@ function deriveLabel(m: SquadMember): string {
       const name = m.battleEnemyName ?? m.battle?.enemyName ?? 'Fighting'
       return m.battle?.enemyHpPct != null ? `${name} ${m.battle.enemyHpPct}%` : name
     }
-    case 'idle': {
-      const ago = shortAgo(m.lastSeen)
-      return ago ? `Idle ${ago}` : 'Idle'
-    }
+    case 'idle':
+      // "Idle 12m", or "Away 45m" once they have been gone long enough.
+      return idleLabel(m.lastSeen, now)
     case 'hurt':
       return 'Hurt'
     case 'safe':
@@ -152,6 +141,8 @@ interface BuildSquadInput {
   self?: Player | null
   /** Each teammate's fight at a glance, keyed by user id. Party members only. */
   glanceById?: Record<string, BattleGlance>
+  /** The server's clock, for "idle 12m". Defaults to now; pass a ticking value to keep labels moving. */
+  now?: number
 }
 
 /**
@@ -174,6 +165,7 @@ function mergeMember({
   partyLeaderId,
   roomDanger,
   glance,
+  now,
 }: {
   info: { id: string; username: string; level: number; uIcon?: string | null; uIconColor?: string | null }
   live?: PresencePlayer
@@ -186,6 +178,7 @@ function mergeMember({
   partyLeaderId: string | null
   roomDanger?: RoomDanger | null
   glance?: BattleGlance | null
+  now?: number
 }): SquadMember {
   const own = isSelf ? self ?? room : null
 
@@ -222,7 +215,12 @@ function mergeMember({
     // the authority on whether there is a fight at all.
     battle: inBattle ? glance ?? null : null,
     presence,
-    lastSeen: live?.lastSeen ?? room?.lastSeen ?? null,
+    // For somebody idle this is when they went quiet (the server's
+    // `idleSince`), which is what "idle 12m" is counted from.
+    lastSeen:
+      presence === 'idle'
+        ? live?.idleSince ?? room?.lastSeen ?? live?.lastSeen ?? null
+        : live?.lastSeen ?? room?.lastSeen ?? null,
     isLeader,
     isSelf,
     inParty,
@@ -248,7 +246,7 @@ function mergeMember({
       partyLeaderId,
     },
   }
-  member.statusLabel = deriveLabel(member)
+  member.statusLabel = deriveLabel(member, now)
   return member
 }
 
@@ -266,6 +264,7 @@ export function buildSquad({
   currentPlayerId,
   self,
   glanceById,
+  now,
 }: BuildSquadInput): SquadMember[] {
   if (!party) return []
 
@@ -284,6 +283,7 @@ export function buildSquad({
       partyLeaderId: party.leaderId,
       roomDanger,
       glance: glanceById?.[info.id] ?? null,
+      now,
     })
   )
 }
@@ -303,6 +303,7 @@ export function buildOutsiders({
   roomPlayers,
   presenceById,
   currentPlayerId,
+  now,
 }: BuildSquadInput): SquadMember[] {
   return followableHere(roomPlayers, party, currentPlayerId).map((p) =>
     mergeMember({
@@ -318,6 +319,7 @@ export function buildOutsiders({
       leadsOwnParty: p.partyLeaderId === p.id,
       partyLeaderId: p.partyLeaderId ?? null,
       roomDanger,
+      now,
     })
   )
 }

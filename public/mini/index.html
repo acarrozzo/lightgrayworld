@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#07141d">
+<title>Light Gray Mini</title>
+<style>
+  /* Colors are Light Gray RPG's Classic theme. */
+  :root {
+    --canvas: #07141d; --panel: #20303f; --raised: #344456; --hover: #425266;
+    --text: #ebeef3; --muted: #8c97ab;
+    --attack: #d66976; --dex: #6ebc75; --mag: #6695d4; --gold: #efb045;
+  }
+  html, body {
+    margin: 0; height: 100%; background: var(--canvas); color: var(--text);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    overflow: hidden; touch-action: none;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  }
+  #app {
+    height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px;
+  }
+  body.touch #app { justify-content: flex-start; gap: 0; }
+  #screen {
+    display: block; flex: none; background: #000;
+    image-rendering: pixelated; image-rendering: crisp-edges;
+    box-shadow: 0 0 0 2px var(--raised), 0 0 0 4px #000;
+  }
+  body.touch #screen { box-shadow: none; }
+  #keys { color: var(--muted); font-size: 12px; letter-spacing: 0.02em; }
+  #keys b { color: var(--text); font-weight: 600; }
+  body.touch #keys { display: none; }
+
+  /* The pad: only on touch screens. */
+  #pad { display: none; }
+  body.touch #pad {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    width: 100%; max-width: 560px; box-sizing: border-box;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    flex: 1; min-height: 190px;
+  }
+  #dpad {
+    position: relative; width: 132px; height: 132px; justify-self: start;
+    border-radius: 50%; background: var(--panel); touch-action: none;
+  }
+  #dpad::before, #dpad::after {
+    content: ''; position: absolute; background: var(--raised); border-radius: 6px;
+  }
+  #dpad::before { left: 46px; top: 8px; width: 40px; height: 116px; }
+  #dpad::after { left: 8px; top: 46px; width: 116px; height: 40px; }
+  #dpad i {
+    position: absolute; width: 40px; height: 40px; z-index: 1; border-radius: 6px;
+    background: transparent; pointer-events: none;
+  }
+  #dpad i.u { left: 46px; top: 8px; } #dpad i.d { left: 46px; top: 84px; }
+  #dpad i.l { left: 8px; top: 46px; } #dpad i.r { left: 84px; top: 46px; }
+  #dpad[data-dir*="u"] i.u, #dpad[data-dir*="d"] i.d,
+  #dpad[data-dir*="l"] i.l, #dpad[data-dir*="r"] i.r { background: var(--muted); }
+
+  #mid { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .pill {
+    font: inherit; font-size: 10px; letter-spacing: 0.06em; color: var(--muted);
+    background: var(--panel); border: 0; border-radius: 12px; padding: 7px 9px; touch-action: none;
+  }
+  .pill.down { background: var(--hover); color: var(--text); }
+
+  #face { position: relative; width: 132px; height: 132px; justify-self: end; }
+  .btn {
+    position: absolute; width: 48px; height: 48px; border-radius: 50%; border: 0; padding: 0;
+    font: inherit; font-size: 17px; font-weight: 700; color: var(--canvas); touch-action: none;
+  }
+  .btn.down { filter: brightness(1.35); transform: scale(0.94); }
+  .btn.a { right: 0; top: 42px; background: var(--attack); }
+  .btn.b { left: 42px; bottom: 0; background: var(--dex); }
+  .btn.y { left: 0; top: 42px; background: var(--mag); }
+  .btn.x { left: 42px; top: 0; background: var(--gold); }
+
+  /* A phone on its side: the pad floats over the corners. */
+  @media (orientation: landscape) and (max-height: 520px) {
+    body.touch #app { justify-content: center; }
+    body.touch #pad {
+      position: fixed; inset: 0; max-width: none; min-height: 0; padding: 0 14px 12px;
+      align-items: end; pointer-events: none;
+    }
+    body.touch #pad > * { pointer-events: auto; opacity: 0.72; }
+    #mid { flex-direction: row; padding-bottom: 6px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="screen" width="256" height="224"></canvas>
+  <div id="keys"><b>Arrows</b> move &nbsp; <b>Z</b> swing / talk &nbsp; <b>X</b> throw &nbsp; <b>C</b> cast &nbsp; <b>V</b> eat &nbsp; <b>Enter</b> bag &nbsp; <b>M</b> sound</div>
+  <div id="pad">
+    <div id="dpad" data-dir=""><i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i></div>
+    <div id="mid">
+      <button class="pill" data-btn="start">START</button>
+      <button class="pill" data-btn="mute">SOUND</button>
+    </div>
+    <div id="face">
+      <button class="btn x" data-btn="x">X</button>
+      <button class="btn y" data-btn="y">Y</button>
+      <button class="btn a" data-btn="a">A</button>
+      <button class="btn b" data-btn="b">B</button>
+    </div>
+  </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

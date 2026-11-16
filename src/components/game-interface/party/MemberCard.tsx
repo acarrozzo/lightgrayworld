@@ -4,6 +4,7 @@ import { Crown, Swords } from 'lucide-react'
 import type { SquadMember, SquadState } from '@/lib/party/squad'
 import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
 import VitalBar, { type VitalKind } from '@/components/game-interface/VitalBar'
+import { idleLabel, idleTier } from '@/lib/presence/idle'
 
 /**
  * One party member, drawn the same way everywhere the party is shown.
@@ -258,7 +259,13 @@ export function NowLine({ member }: { member: SquadMember }) {
     case 'down':
       return <div className={`text-[11px] ${tone}`}>Fallen · waking in the Plane of Rebirth</div>
     case 'idle':
-      return <div className={`text-[11px] ${tone}`}>Idle{idleAgo(member) ? ` ${idleAgo(member)}` : ''}</div>
+      // "Idle 12m" from when they went quiet; "Away 45m", and quieter, once
+      // they have been gone long enough that waiting is not a plan.
+      return (
+        <div className={`text-[11px] ${idleTier(member.lastSeen) === 'away' ? 'text-fg-muted' : tone}`}>
+          {member.statusLabel || idleLabel(member.lastSeen)}
+        </div>
+      )
     case 'offline':
       return <div className={`text-[11px] ${tone}`}>Offline{idleAgo(member) ? ` ${idleAgo(member)}` : ''}</div>
     case 'safe':

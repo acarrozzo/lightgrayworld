@@ -62,6 +62,11 @@ export interface MergeRosterInput {
   currentPlayerId?: string
 }
 
+/** For somebody idle, when they went quiet: what "idle 12m" is counted from. */
+function liveSince(live: PresencePlayer): number {
+  return live.status === 'idle' && live.idleSince ? live.idleSince : live.lastSeen
+}
+
 export function mergeRoster({
   directory,
   presenceById,
@@ -89,7 +94,7 @@ export function mergeRoster({
       // The live room may be one the directory row hasn't caught up to, so resolve
       // its name from the world map first and fall back to the joined row.
       roomName: roomNames[roomId] ?? user.roomName ?? null,
-      lastSeen: live ? live.lastSeen : new Date(user.lastActive).getTime(),
+      lastSeen: live ? liveSince(live) : new Date(user.lastActive).getTime(),
       presence,
       currency: user.currency,
       createdAt: user.createdAt,
@@ -131,7 +136,7 @@ export function mergeRoster({
       isSelf: live.id === currentPlayerId,
       roomId,
       roomName: roomNames[roomId] ?? null,
-      lastSeen: live.lastSeen,
+      lastSeen: liveSince(live),
       presence: live.status,
       stats: {
         hp: live.hp,

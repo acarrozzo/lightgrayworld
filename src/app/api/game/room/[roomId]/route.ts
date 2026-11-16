@@ -71,11 +71,11 @@ async function handleGetRoom(request: AuthenticatedRequest) {
     }
 
     const normalizedRoom = normalizeRoomData(room)
-    const activePlayers = normalizedRoom?.players?.filter((player) => player.isActive) || []
-
-    const { getGhostsForRoom } = require('@/lib/services/ghost-player-store')
-    const activePlayerIds = new Set(activePlayers.map((p: { id: string }) => p.id))
-    const ghosts = getGhostsForRoom(actualRoomId).filter((g: { id: string }) => !activePlayerIds.has(g.id))
+    // Who is here is live server state, from the one builder every room list
+    // uses (services/room-occupants), not the `players` relation selected above:
+    // `isActive` in the database is not presence.
+    const { buildRoomOccupants, splitRoomOccupants } = require('@/lib/services/room-occupants')
+    const { players: activePlayers, roomGhosts: ghosts } = splitRoomOccupants(buildRoomOccupants(actualRoomId))
 
     return NextResponse.json({
       room: normalizedRoom ? { ...normalizedRoom, players: activePlayers } : null,

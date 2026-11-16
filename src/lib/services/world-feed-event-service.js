@@ -102,9 +102,16 @@ async function createWorldFeedEvent({ userId, username, eventType, detail = null
   return entry
 }
 
+// Idle and return are no longer written (see idle-detection-service): the room
+// card, the roster and the party rail show them, and in the feed they were most
+// of the World channel. The types stay valid so the rows already in the table
+// still parse, but they are left out of the history a client loads.
+const RETIRED_EVENT_TYPES = ['idle', 'return']
+
 async function getRecentWorldFeedEvents(limit = DEFAULT_LIMIT) {
   const safeLimit = Math.max(1, Math.min(limit, 200))
   const records = await prisma.worldFeedEvent.findMany({
+    where: { eventType: { notIn: RETIRED_EVENT_TYPES } },
     orderBy: { timestamp: 'desc' },
     take: safeLimit,
   })

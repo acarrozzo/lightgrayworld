@@ -6,6 +6,12 @@ const nextConfig: NextConfig = {
   // build directory wedge each other. NEXT_DIST_DIR gives it its own.
   distDir: process.env.NEXT_DIST_DIR || '.next',
 
+  // Light Gray Mini is plain static files under public/mini. Send /mini to its
+  // page so the relative script paths resolve.
+  async redirects() {
+    return [{ source: '/mini', destination: '/mini/index.html', permanent: false }]
+  },
+
   // Use webpack instead of turbopack
   experimental: {
     // turbo: false // This option doesn't exist in NextConfig
