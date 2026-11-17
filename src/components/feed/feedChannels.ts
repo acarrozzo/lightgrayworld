@@ -140,6 +140,14 @@ export const modeForChatSubFilter = (sub: ChatSubFilter): InputMode | null => {
   return null
 }
 
+/**
+ * A room line saying somebody here went idle or came back. It keeps company
+ * with Enter and Exit (Actions, Movement) and is drawn quieter than either:
+ * gray, small, no tag.
+ */
+export const isPresenceNote = (eventType?: string | null): boolean =>
+  eventType === 'room-idle' || eventType === 'room-return'
+
 /** Which channel a feed entry speaks on, for the row's colour and a reply tap. */
 export const channelOfEntry = (entry: { type: string; eventType?: string }): FeedChannel => {
   if (entry.type === 'party') return 'party'
@@ -147,7 +155,7 @@ export const channelOfEntry = (entry: { type: string; eventType?: string }): Fee
   if (entry.type === 'action') return 'action'
   if (entry.eventType) {
     const travel = entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel'
-    return travel ? 'action' : 'events'
+    return travel || isPresenceNote(entry.eventType) ? 'action' : 'events'
   }
   return entry.type === 'world' ? 'world' : 'room'
 }

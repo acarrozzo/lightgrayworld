@@ -72,3 +72,21 @@ export const formatDirectionPhrase = (direction: string | null | undefined, cont
 
   return `the ${direction.replace(/_/g, ' ')}`
 }
+
+/**
+ * The room feed's line for somebody leaving the room, or null when there is
+ * nothing to say. A session that ended is not an exit: the world feed already
+ * says they disconnected and their card turns into an Offline one, so the room
+ * adds nothing. It used to say they "teleported away", because a disconnect
+ * has no direction and neither does a teleport.
+ */
+export const roomExitLine = (
+  username: string,
+  exitDirection: string | null | undefined,
+  reason?: string | null
+): string | null => {
+  if (reason === 'disconnect') return null
+  return exitDirection
+    ? `${username} exited to ${formatDirectionPhrase(exitDirection, 'exit')}`
+    : `${username} teleported away`
+}

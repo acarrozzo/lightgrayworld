@@ -6,7 +6,7 @@ import type { Player } from '@/lib/game-state'
 import { useGameStore } from '@/lib/game-state'
 import { getRoomActions, isRoomActionVisible } from '@/lib/room-actions'
 import { goldChestFlagForRoom } from '@/lib/game-data/gold-chests'
-import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
+import { IDLE_AVATAR_FILTER, IdleMoon, PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
 import type { PartySnapshot } from '@/lib/socket'
 import { followableHere } from '@/lib/party/squad'
 import { idleFollowWarning, idleLabel, idleTier } from '@/lib/presence/idle'
@@ -615,15 +615,14 @@ function PlayerCard({ player, onInspect, disabled, onFollow, followPending = fal
   // reads quieter because waiting on them is no longer a plan.
   const isAway = isIdle && idleTier(player.lastSeen, now) === 'away'
 
+  // An idle player's card is the same card. What changes is on the sprite: a
+  // moon at its corner, half its color gone, then all of it once they are Away.
+  // Only somebody whose session ended fades as a whole.
   const containerClass = [
     'group flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-fg-bright transition-all duration-200 overflow-hidden active:scale-[0.98]',
     isDisconnected
       ? 'border-line-strong/20 bg-surface-hover/10 opacity-35 grayscale hover:border-line-strong/40 hover:opacity-50'
-      : isAway
-        ? 'border-line-strong/25 bg-surface-hover/10 opacity-45 hover:border-line-strong/50 hover:opacity-70'
-      : isIdle
-        ? 'border-resource-gold/20 bg-resource-gold/10 opacity-60 hover:border-resource-gold/50 hover:bg-resource-gold/15'
-        : 'border-line-strong/30 bg-surface-selected/10 hover:border-stat-mag hover:bg-stat-mag/20 shadow-sm hover:shadow-md hover:shadow-stat-mag/10',
+      : 'border-line-strong/30 bg-surface-selected/10 hover:border-stat-mag hover:bg-stat-mag/20 shadow-sm hover:shadow-md hover:shadow-stat-mag/10',
     disabled ? 'cursor-not-allowed opacity-50' : '',
   ].filter(Boolean).join(' ')
 
@@ -639,10 +638,15 @@ function PlayerCard({ player, onInspect, disabled, onFollow, followPending = fal
       className={containerClass}
     >
       <div className="relative flex h-12 w-8 items-center justify-center flex-shrink-0">
-        <PlayerAvatar uIcon={player.uIcon} uIconColor={player.uIconColor} size="md" />
+        <div className={`transition-[filter] duration-500 ${isAway ? IDLE_AVATAR_FILTER.away : isIdle ? IDLE_AVATAR_FILTER.idle : ''}`}>
+          <PlayerAvatar uIcon={player.uIcon} uIconColor={player.uIconColor} size="md" />
+        </div>
         {isIdle && (
-          <span className="absolute -top-0.5 -right-1 text-[9px] leading-none" title={isAway ? 'Away' : 'Idle'}>
-            💤
+          <span
+            className="absolute -top-1 -right-1.5 flex h-[13px] w-[13px] items-center justify-center rounded-full bg-surface-sunken"
+            title={isAway ? 'Away' : 'Idle'}
+          >
+            <IdleMoon away={isAway} />
           </span>
         )}
         {isDisconnected && (
@@ -650,7 +654,7 @@ function PlayerCard({ player, onInspect, disabled, onFollow, followPending = fal
         )}
       </div>
       <div className="leading-tight min-w-0">
-        <div className="text-xs font-semibold text-fg-bright/90 truncate max-w-[110px]">{player.username}</div>
+        <div className={`text-xs font-semibold truncate max-w-[110px] ${isAway ? 'text-fg-secondary' : 'text-fg-bright/90'}`}>{player.username}</div>
         {/* The title they wear: the Pillar's name or a guild's. */}
         {player.title && (
           <div className="truncate max-w-[110px] text-[9px] font-semibold text-resource-gold" title={player.title}>{player.title}</div>
@@ -677,7 +681,7 @@ function PlayerCard({ player, onInspect, disabled, onFollow, followPending = fal
         })()}
         {/* Counted from their last activity, on the server's clock. */}
         {isIdle && (
-          <div className={`text-[9px] mt-0.5 ${isAway ? 'text-fg-secondary/80' : 'text-resource-gold/80'}`}>
+          <div className={`text-[9px] mt-0.5 ${isAway ? 'text-fg-secondary/80' : 'text-status-warning/80'}`}>
             {idleLabel(player.lastSeen, now)}
           </div>
         )}

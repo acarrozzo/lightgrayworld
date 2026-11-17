@@ -22,6 +22,7 @@ import {
   HEARTBEAT_RETRY_MS,
   IDLE_AWAY_MS,
   LEADER_IDLE_NUDGE_MS,
+  idleFeedLine,
   idleFollowWarning,
   idleLabel,
   idleTier,
@@ -32,6 +33,8 @@ import {
   type HeartbeatState,
 } from '../src/lib/presence/idle'
 import { buildSquad } from '../src/lib/party/squad'
+import { channelOfEntry, isPresenceNote } from '../src/components/feed/feedChannels'
+import { roomExitLine } from '../src/components/game-interface/utils'
 import { mergeRoster, type DirectoryPlayer } from '../src/lib/roster/merge-roster'
 
 const MIN = 60 * 1000
@@ -65,6 +68,27 @@ test('a follower is nudged only once their leader has been idle a while', () => 
   assert.equal(shouldNudgeLeaderIdle({ presence: 'active', lastSeen: NOW - 60 * MIN }, NOW), false)
   assert.equal(shouldNudgeLeaderIdle({ ...idleFor(60 * MIN), inBattle: true }, NOW), false, 'a fight is its own line')
   assert.equal(shouldNudgeLeaderIdle(null, NOW), false)
+})
+
+test('the room feed says who went quiet and who came back, quietly', () => {
+  assert.equal(idleFeedLine('Tim', 'idle'), 'Tim is now idle.')
+  assert.equal(idleFeedLine('Tim', 'return'), 'Tim has returned.')
+
+  // Both lines sit with Enter and Exit (Actions, Movement), not with world
+  // events and not with chat, and are told apart so they can be drawn gray.
+  for (const eventType of ['room-idle', 'room-return']) {
+    assert.equal(isPresenceNote(eventType), true)
+    assert.equal(channelOfEntry({ type: 'room', eventType }), 'action')
+  }
+  assert.equal(isPresenceNote('room-enter'), false)
+  assert.equal(isPresenceNote(undefined), false)
+})
+
+test('a session that ended is not an exit, and never a teleport', () => {
+  assert.equal(roomExitLine('Tim', 'north'), 'Tim exited to the north')
+  assert.equal(roomExitLine('Tim', null), 'Tim teleported away')
+  // The world feed says "Tim has disconnected." and the card goes Offline.
+  assert.equal(roomExitLine('Tim', null, 'disconnect'), null)
 })
 
 // --- The surfaces read the same timestamp --------------------------------------

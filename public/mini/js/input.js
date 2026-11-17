@@ -1,6 +1,6 @@
 // Light Gray Mini: one input state for keyboard and touch.
 // Buttons, laid out like a 16-bit pad: a (swing / talk / confirm), b (ranged /
-// back), y (spell), x (use the chosen item), start (menu). `held` is the live state; `pressed` is true for the one
+// back), y (spell), x (use the chosen item), start (menu), map. `held` is the live state; `pressed` is true for the one
 // update after a button goes down.
 
 const KEYMAP = {
@@ -13,10 +13,11 @@ const KEYMAP = {
   KeyC: 'y', KeyL: 'y',
   KeyV: 'x', Semicolon: 'x',
   Enter: 'start', Escape: 'start', KeyI: 'start',
+  Tab: 'map', KeyQ: 'map',
   KeyM: 'mute',
 };
 
-const BUTTONS = ['up', 'down', 'left', 'right', 'a', 'b', 'x', 'y', 'start', 'mute'];
+const BUTTONS = ['up', 'down', 'left', 'right', 'a', 'b', 'x', 'y', 'start', 'map', 'mute'];
 
 export const held = Object.fromEntries(BUTTONS.map((b) => [b, false]));
 export const pressed = Object.fromEntries(BUTTONS.map((b) => [b, false]));

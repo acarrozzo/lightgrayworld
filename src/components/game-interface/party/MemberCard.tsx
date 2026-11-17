@@ -2,7 +2,7 @@
 
 import { Crown, Swords } from 'lucide-react'
 import type { SquadMember, SquadState } from '@/lib/party/squad'
-import { PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
+import { IdleMoon, PlayerAvatar, formatTimeAgo } from '@/components/player/PlayerRow'
 import VitalBar, { type VitalKind } from '@/components/game-interface/VitalBar'
 import { idleLabel, idleTier } from '@/lib/presence/idle'
 
@@ -139,13 +139,18 @@ export function StateBadge({
    */
   showTitle?: boolean
 }) {
+  // Idle wears the moon every other surface gives it, and goes gray with the
+  // rest of them once it is Away.
+  const isIdle = member.state === 'idle'
+  const isAway = isIdle && idleTier(member.lastSeen) === 'away'
   return (
     <span
       title={showTitle ? member.statusLabel : undefined}
       className={`inline-block max-w-full truncate rounded-sm border px-1 py-px text-[8px] font-bold uppercase leading-[1.5] tracking-wide ${
-        BADGE_TONE[member.state]
+        isAway ? BADGE_TONE.offline : BADGE_TONE[member.state]
       } ${className}`}
     >
+      {isIdle && <IdleMoon away={isAway} size={7} className="mr-[3px] inline align-[-1px]" />}
       {member.statusLabel}
     </span>
   )
@@ -262,7 +267,8 @@ export function NowLine({ member }: { member: SquadMember }) {
       // "Idle 12m" from when they went quiet; "Away 45m", and quieter, once
       // they have been gone long enough that waiting is not a plan.
       return (
-        <div className={`text-[11px] ${idleTier(member.lastSeen) === 'away' ? 'text-fg-muted' : tone}`}>
+        <div className={`flex items-center gap-1 text-[11px] ${idleTier(member.lastSeen) === 'away' ? 'text-fg-muted' : tone}`}>
+          <IdleMoon away={idleTier(member.lastSeen) === 'away'} size={10} />
           {member.statusLabel || idleLabel(member.lastSeen)}
         </div>
       )

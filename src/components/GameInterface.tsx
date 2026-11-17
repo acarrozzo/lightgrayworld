@@ -55,7 +55,7 @@ import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/ava
 import { MESSAGE_MAX_LENGTH } from '@/lib/sanitization'
 import { TELEPORT_MP_COST } from './game-interface/constants'
 import { filterTabToView, getItemCategory, type FilterTab, type ItemFilterView } from '@/lib/inventory-categories'
-import { findTravelDirection, checkIfExitHasGate, normalizeCommand, formatDirectionPhrase } from './game-interface/utils'
+import { findTravelDirection, checkIfExitHasGate, normalizeCommand, formatDirectionPhrase, roomExitLine } from './game-interface/utils'
 import { prettifyDropName } from '@/lib/action-deck'
 /** The refusal for a direction with no exit: "to the north", "upward". */
 function noExitMessage(direction: string): string {
@@ -73,6 +73,7 @@ function victoryDropNames(payload: { dropDetails?: { slug: string; qty: number }
 
 import { useGameSocketBindings } from './game-interface/useGameSocketBindings'
 import { usePresenceHeartbeat } from './game-interface/usePresenceHeartbeat'
+import { idleFeedLine } from '@/lib/presence/idle'
 import { DirectoryContent } from './game-interface/DirectoryContent'
 import CharPanel from './game-interface/panels/CharPanel'
 import QuestsPanel, { QUEST_SUB_TABS, type QuestsTab, type BattleLogPreset, type BattleOutcome } from './game-interface/panels/QuestsPanel'
@@ -2996,10 +2997,9 @@ export default function GameInterface() {
 
       const isSelf = Boolean(currentPlayer && playerData.id === currentPlayer.id)
       const exitDirection = playerData.exitDirection
-      const directionPhrase = formatDirectionPhrase(exitDirection, 'exit')
-      const message = exitDirection
-        ? `${playerData.username} exited to ${directionPhrase}`
-        : `${playerData.username} teleported away`
+      // Closing the tab is not walking out: no room line for a session that ended.
+      const message = roomExitLine(playerData.username, exitDirection, playerData.reason)
+      if (message === null) return
 
       appendWorldFeed({
         type: 'room',
@@ -3013,10 +3013,32 @@ export default function GameInterface() {
       })
     })
 
+    // The room feed's quiet line for somebody here going idle or coming back.
+    // The server sends the event to the whole room, the player it is about
+    // included, and nobody is told about themselves. A repeat of an event the
+    // card already shows says nothing twice.
+    const notePresenceChange = (data: { id: string; username: string; roomId: string }, change: 'idle' | 'return') => {
+      const currentPlayer = playerRef.current
+      if (currentPlayer && data.id === currentPlayer.id) return
+      const known = useGameStore.getState().roomPlayers.find((p) => p.id === data.id)
+      const alreadyShown = known && (known.presenceStatus === 'idle') === (change === 'idle')
+      if (alreadyShown) return
+      appendWorldFeed({
+        type: 'room',
+        actor: data.username,
+        isSelf: false,
+        message: idleFeedLine(data.username, change),
+        ts: Date.now(),
+        roomId: data.roomId,
+        eventType: change === 'idle' ? 'room-idle' : 'room-return',
+      })
+    }
+
     const cleanupPlayerIdle = socketHandlers.onPlayerIdle((data) => {
       const activeRoom = currentRoomRef.current
       if (!activeRoom || data.roomId !== activeRoom.roomId) return
 
+      notePresenceChange(data, 'idle')
       const currentRoomPlayers = useGameStore.getState().roomPlayers
       setRoomPlayers(
         currentRoomPlayers.map((p) =>
@@ -3031,6 +3053,7 @@ export default function GameInterface() {
       const activeRoom = currentRoomRef.current
       if (!activeRoom || data.roomId !== activeRoom.roomId) return
 
+      notePresenceChange(data, 'return')
       const currentRoomPlayers = useGameStore.getState().roomPlayers
       setRoomPlayers(
         currentRoomPlayers.map((p) =>

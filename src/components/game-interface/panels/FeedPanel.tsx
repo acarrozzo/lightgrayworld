@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, type FormEvent, type RefObject } from 'react'
-import { AlertTriangle, Compass, Crown, Globe, MessageSquare, MessageSquareText, Mail, Sparkles, Swords, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, Compass, Crown, Globe, MessageSquare, MessageSquareText, Mail, Moon, Sparkles, Sun, Swords, Users, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, ArrowUpLeft, ArrowUpRight, ArrowDownLeft, ArrowDownRight, ChevronDown, type LucideIcon } from 'lucide-react'
 import { useWorldFeedStore, type WorldFeedEntry } from '@/store/worldFeedStore'
 import { useLineSourcesStore } from '@/store/lineSourcesStore'
 import FeedLinkButton from '@/components/feed/FeedLinkButton'
@@ -13,6 +13,7 @@ import {
   NEUTRAL_CHIP,
   channelOfEntry,
   chatSubFilterForMode,
+  isPresenceNote,
   isInputMode,
   modeForChatSubFilter,
   type ChatSubFilter,
@@ -235,6 +236,20 @@ const ACTIVITY_STYLES: Record<string, CategoryStyle> = {
     barClass: 'bg-channel-dm',
     iconClass: 'text-channel-dm',
   },
+  // Somebody in the room went quiet, or came back. Deliberately the quietest
+  // rows in the feed: no bar, no tag, gray.
+  'room-idle': {
+    label: 'IDLE',
+    icon: Moon,
+    barClass: 'bg-transparent',
+    iconClass: 'text-fg-muted',
+  },
+  'room-return': {
+    label: 'ACTIVE',
+    icon: Sun,
+    barClass: 'bg-transparent',
+    iconClass: 'text-fg-muted',
+  },
 }
 
 const ACTIVITY_LABELS: Record<string, string> = {
@@ -266,6 +281,8 @@ const ACTIVITY_LABELS: Record<string, string> = {
   'room-enter': 'Enter',
   'room-exit': 'Exit',
   'room-travel': 'Travel',
+  'room-idle': 'Idle',
+  'room-return': 'Active',
 }
 
 /** Your own fight's rows: the opening, each turn, and how it ended. */
@@ -284,6 +301,8 @@ const ACTIVITY_TEXT_CLASSES: Record<string, string> = {
   'room-enter': 'text-channel-dm',
   'room-exit': 'text-channel-dm',
   'room-travel': 'text-channel-dm',
+  'room-idle': 'text-fg-muted',
+  'room-return': 'text-fg-muted',
 }
 
 const DIRECTION_ICONS: Record<string, LucideIcon> = {
@@ -392,7 +411,9 @@ const getMessageColorClass = (entry: WorldFeedEntry) => {
 
 const getEntryCategory = (entry: WorldFeedEntry): 'chat' | 'event' | 'action' => {
   if (entry.type === 'party') return 'chat'
-  const isRoomTravel = entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel'
+  // Going idle and coming back keep company with Enter and Exit.
+  const isRoomTravel =
+    entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel' || isPresenceNote(entry.eventType)
   const isActivity = Boolean(entry.eventType) && !isRoomTravel
   const isChat = !isActivity && !isRoomTravel && (entry.type === 'room' || entry.type === 'world')
   
@@ -589,7 +610,7 @@ export default function FeedPanel({
         // Actions: type === 'action' OR (type === 'room' AND eventType === room movement)
         // OR a fight row (your own battle, typed as a room row with a battle tag).
         const isActionFeedback = entry.type === 'action'
-        const isMovement = (entry.type === 'room' && (entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel')) ||
+        const isMovement = (entry.type === 'room' && (entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel' || isPresenceNote(entry.eventType))) ||
                           (entry.type === 'action' && entry.eventType === 'room-travel')
         const isBattle = isBattleEntry(entry)
         const isAction = isActionFeedback || isMovement || isBattle
@@ -975,8 +996,10 @@ export default function FeedPanel({
             const style = getEntryStyle(entry)
             const messageText = entry.message ?? entry.text ?? ''
             const isRoomTravel = entry.eventType === 'room-enter' || entry.eventType === 'room-exit' || entry.eventType === 'room-travel'
-            const isActivity = Boolean(entry.eventType) && !isRoomTravel
-            const isChat = !isActivity && !isRoomTravel && (entry.type === 'room' || entry.type === 'world')
+            // Somebody here went idle or came back: gray, small, no tag.
+            const isPresence = isPresenceNote(entry.eventType)
+            const isActivity = Boolean(entry.eventType) && !isRoomTravel && !isPresence
+            const isChat = !isActivity && !isRoomTravel && !isPresence && (entry.type === 'room' || entry.type === 'world')
             const actorLabel = entry.actor || 'Unknown'
             const contentSize = settings.compactMode ? 'text-[13px]' : 'text-sm'
             const rowPadding = settings.compactMode ? 'py-1 pr-3 pl-4' : 'py-1.5 pr-4 pl-5'
@@ -1057,7 +1080,9 @@ export default function FeedPanel({
             const isEvent = entryCategory === 'event'
             const isAction = entryCategory === 'action'
             const terminalPadding = settings.compactMode ? 'py-0.5 pr-2 pl-3' : 'py-1 pr-3 pl-4'
-            const categoryBgClass = isEvent
+            const categoryBgClass = isPresence
+              ? 'bg-transparent'
+              : isEvent
               ? 'bg-surface-raised/30' 
               : isAction
               ? 'bg-surface-panel/40'
@@ -1098,6 +1123,8 @@ export default function FeedPanel({
                       </>
                     ) : isRoomTravel ? (
                       <span className={`${messageColorClass} font-mono`}>{messageText}</span>
+                    ) : isPresence ? (
+                      <span className="font-mono text-[11px] text-fg-muted">{messageText}</span>
                     ) : entry.eventType === 'line' ? (
                       // A spoken line: the speaker, the words, and (for review) the data row.
                       <>

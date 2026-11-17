@@ -11,6 +11,7 @@ import { QUESTS, SHOPS, questProgress } from './data/quests.js';
 import * as R from './rules.js';
 import { plain } from './world.js';
 import { saveGame } from './state.js';
+import { newMapState, updateMap, drawMap, EVERYWHERE } from './map.js';
 
 const WRAP = 38;
 const TABS = ['STATUS', 'BAG', 'MAGIC', 'QUESTS'];
@@ -60,6 +61,12 @@ export class UI {
     this.modal = { type: 'menu', tab: 0, row: 0 };
   }
 
+  /** The map. With { travel, onTravel } it is how a gold pillar takes you somewhere. */
+  openMap(opts = {}) {
+    sfx.select();
+    this.modal = newMapState(this.game.roomId, opts);
+  }
+
   openShop(id) {
     sfx.select();
     this.modal = { type: 'shop', id, sel: 0, note: '' };
@@ -79,8 +86,8 @@ export class UI {
     if (this.toasts.length > 4) this.toasts.shift();
   }
 
-  showBanner(id, room) {
-    this.banner = { id, name: room.name, sub: room.sub && room.sub !== String(id) ? room.sub : '', t: 0 };
+  showBanner(id, room, fresh = false) {
+    this.banner = { id, name: room.name, sub: room.sub && room.sub !== String(id) ? room.sub : '', t: 0, fresh };
   }
 
   /** The one-line feed. parts: [[text, colorKey], ...] */
@@ -103,6 +110,7 @@ export class UI {
     else if (m.type === 'choose') this.updateChoose(m);
     else if (m.type === 'menu') this.updateMenu(m);
     else if (m.type === 'shop') this.updateShop(m);
+    else if (m.type === 'map') updateMap(this, m);
     else if (m.type === 'dead') {
       m.t += 1;
       if (m.t > 70 && pressed.a) { this.modal = null; m.cb(); }
@@ -209,6 +217,7 @@ export class UI {
     else if (m.type === 'choose') this.drawChoose(g, m);
     else if (m.type === 'menu') this.drawMenu(g, m);
     else if (m.type === 'shop') this.drawShop(g, m);
+    else if (m.type === 'map') drawMap(g, this, m);
     else if (m.type === 'dead') this.drawDead(g, m);
     else if (m.type === 'credits') this.drawCredits(g, m);
   }
@@ -263,12 +272,16 @@ export class UI {
   drawBanner(g) {
     const b = this.banner;
     const title = `${b.id}  ${b.name}`;
-    const w = Math.max(textWidth(title), textWidth(b.sub)) + 16;
+    // A room's first visit says so: it has just gone on the map.
+    const full = b.fresh ? `${title}  NEW` : title;
+    const w = Math.max(textWidth(full), textWidth(b.sub)) + 16;
     const slide = Math.min(1, b.t / 10, (170 - b.t) / 10);
     const y = HUD_H - 26 + Math.round(30 * slide);
     const x = Math.round((W - w) / 2);
     panel(g, x, y, w, b.sub ? 27 : 17, 'Q', 'j');
-    drawTextCentered(g, title, W / 2, y + 5, '9');
+    const tx = Math.round((W - textWidth(full)) / 2);
+    drawText(g, title, tx, y + 5, '9');
+    if (b.fresh) drawText(g, 'NEW', tx + (title.length + 2) * 6, y + 5, 'J');
     if (b.sub) drawTextCentered(g, b.sub, W / 2, y + 15, 'a');
   }
 
@@ -411,6 +424,7 @@ export class UI {
         cy += 4;
       }
       drawText(g, `Done: ${done}`, cx, y + H - HUD_H - 12 - 26, 'a');
+      if (p.flags[EVERYWHERE.flag]) drawText(g, `\u2605 ${EVERYWHERE.name}`, cx + 60, y + H - HUD_H - 12 - 26, 'J');
     }
     drawText(g, 'START closes', W - 16 - 10 - textWidth('START closes'), y + H - HUD_H - 12 - 14, '%');
   }

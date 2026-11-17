@@ -75,6 +75,14 @@ export function idleFollowWarning(username: string, since?: number | null, now: 
   return `${username} is ${idleLabel(since, now).toLowerCase()} and may not answer`
 }
 
+/**
+ * The room feed's line when somebody in the room goes quiet or comes back. Only
+ * the people standing there read it, and nobody reads their own.
+ */
+export function idleFeedLine(username: string, change: 'idle' | 'return'): string {
+  return change === 'idle' ? `${username} is now idle.` : `${username} has returned.`
+}
+
 /** Whether a follower should be offered the way out of a party whose leader is idle. */
 export function shouldNudgeLeaderIdle(
   leader: { presence: string; lastSeen?: number | null; inBattle?: boolean } | null | undefined,

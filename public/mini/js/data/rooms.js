@@ -49,6 +49,7 @@ export const ROOMS = {
   // The Plane of Rebirth: where the fallen wake.
   999: {
     name: 'Plane of Rebirth', sub: '999', sheet: 'rebirth', at: [0, 0], theme: 'rebirth', music: 'rebirth', safe: true,
+    offMap: true,     // you can't walk here, so finding every room does not ask for it
     map: [
       '                ',
       '                ',

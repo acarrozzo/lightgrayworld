@@ -3,6 +3,7 @@
 import { useColoredAvatar } from '@/hooks/useColoredAvatar'
 import { DEFAULT_PLAYER_AVATAR, DEFAULT_AVATAR_COLOR } from '@/lib/constants/avatars'
 import VitalBar from '@/components/game-interface/VitalBar'
+import { Moon } from 'lucide-react'
 import { idleLabel, idleTier } from '@/lib/presence/idle'
 
 /**
@@ -102,9 +103,40 @@ export const PRESENCE_META: Record<
   { label: string; dot: string; text: string }
 > = {
   active: { label: 'Online', dot: 'bg-status-success', text: 'text-status-success' },
-  idle: { label: 'Idle', dot: 'bg-resource-gold', text: 'text-resource-gold' },
+  idle: { label: 'Idle', dot: 'bg-status-warning', text: 'text-status-warning' },
   disconnected: { label: 'Offline', dot: 'bg-surface-selected', text: 'text-fg-secondary' },
 }
+
+/**
+ * The one idle mark: a small moon, wherever a player is shown (room card,
+ * roster, party rail). In the idle color while they might be back in a minute,
+ * gray once they are Away. It replaced an emoji on the room card and nothing at
+ * all on the other two.
+ */
+export function IdleMoon({
+  away = false,
+  size = 9,
+  className = '',
+}: {
+  away?: boolean
+  size?: number
+  className?: string
+}) {
+  return (
+    <Moon
+      size={size}
+      fill="currentColor"
+      aria-hidden="true"
+      className={`shrink-0 ${away ? 'text-fg-muted' : 'text-status-warning'} ${className}`}
+    />
+  )
+}
+
+/** What going quiet does to a sprite: half its color when idle, all of it once Away. */
+export const IDLE_AVATAR_FILTER = {
+  idle: 'saturate-50 brightness-90',
+  away: 'grayscale brightness-75',
+} as const
 
 export function PlayerAvatar({
   uIcon,
@@ -207,10 +239,13 @@ export function PlayerBadges({ row }: { row: PlayerRowData }) {
       )}
       {presence === 'idle' && (
         <span
-          className={`text-[9px] ${idleTier(row.lastSeen) === 'away' ? 'text-fg-muted' : 'text-status-warning/80'}`}
+          className={`inline-flex items-center gap-1 text-[9px] ${
+            idleTier(row.lastSeen) === 'away' ? 'text-fg-muted' : 'text-status-warning/80'
+          }`}
           title="Connected, but nothing from them in a while"
         >
-          {idleLabel(row.lastSeen).toLowerCase()}
+          <IdleMoon away={idleTier(row.lastSeen) === 'away'} size={8} />
+          {idleLabel(row.lastSeen)}
         </span>
       )}
     </>

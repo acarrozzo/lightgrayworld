@@ -13,6 +13,7 @@ import { neighbor, check, edgeGate, EDGES } from './world.js';
 import { pressed, axis, clearInput } from './input.js';
 import { sfx, playSong } from './audio.js';
 import { saveGame } from './state.js';
+import { foundEverything, EVERYWHERE } from './map.js';
 
 const FIELD_H = ROWS * TILE;
 const SPEED = 1.25;
@@ -87,6 +88,7 @@ export class Game {
       for (let cx = 0; cx < COLS; cx++) if ((TILES[this.map[cy][cx]] || {}).water) this.waterCells.push([cx, cy]);
     }
     this.p.room = id;
+    this.fresh = !this.p.seen[id];     // the first time here: it goes on the map
     this.p.seen[id] = true;
     if (room.hub) this.p.hub = id;
   }
@@ -124,7 +126,14 @@ export class Game {
   arrive() {
     this.spawnMobs();
     this.hero.inv = Math.max(this.hero.inv, 45);   // a breath before anything bites
-    this.ui.showBanner(this.roomId, this.room);
+    this.ui.showBanner(this.roomId, this.room, this.fresh);
+    if (!this.p.flags[EVERYWHERE.flag] && foundEverything(this.p)) {
+      this.p.flags[EVERYWHERE.flag] = true;
+      this.p.gold += EVERYWHERE.gold;
+      sfx.secret();
+      this.ui.toast(`\u2605 ACHIEVEMENT: ${EVERYWHERE.name}`, 'J');
+      this.ui.toast(`Every room found. +${EVERYWHERE.gold} gold`, '9');
+    }
     playSong(this.mobs.some((m) => m.def.boss) ? 'boss' : this.room.music);
     this.p.x = this.hero.x;
     this.p.y = this.hero.y;
@@ -259,6 +268,7 @@ export class Game {
     if (this.mode === 'dead') return undefined;
 
     if (pressed.start) { this.ui.openMenu(); return undefined; }
+    if (pressed.map) { this.ui.openMap(); return undefined; }
     this.updateHero();
     if (this.mode !== 'play' || this.ui.busy) return undefined;
     for (const m of [...this.mobs]) this.updateMob(m);
@@ -963,21 +973,20 @@ export class Game {
     return th ? [th.x, th.y + 1] : [7, 7];
   }
 
-  /** Gold pillars: any one takes you to any other you have stood beside, for 1 MP. */
+  /** Gold pillars: any one takes you to any other you have stood beside, for 1 MP. You pick on the map. */
   fastTravel() {
     const p = this.p;
     const ui = this.ui;
-    const hubs = Object.keys(ROOMS).filter((id) => ROOMS[id].hub && p.seen[id] && id !== this.roomId).sort();
-    if (!hubs.length) { ui.say('', 'DRAFT|A gold pillar. It knows the other pillars you have stood beside. So far, none.'); return; }
-    const options = hubs.map((id) => ({ label: ROOMS[id].name, value: id }));
-    options.push({ label: 'Stay', value: null });
-    ui.choose(`Travel for 1 MP?  You have ${p.mp}.`, options, (id) => {
-      if (!id) return;
-      if (p.mp < 1) { sfx.deny(); ui.setFeed([['Not enough MP.', 'E']]); return; }
-      p.mp -= 1;
-      sfx.secret();
-      const [cx, cy] = this.hubArrival(id);
-      this.startFade(() => this.enterRoom(id, cx, cy, 'down'));
+    const others = Object.keys(ROOMS).some((id) => ROOMS[id].hub && p.seen[id] && id !== this.roomId);
+    if (!others) { ui.say('', 'DRAFT|A gold pillar. It knows the other pillars you have stood beside. So far, none.'); return; }
+    ui.openMap({
+      travel: true,
+      onTravel: (id) => {
+        p.mp -= 1;
+        sfx.secret();
+        const [cx, cy] = this.hubArrival(id);
+        this.startFade(() => this.enterRoom(id, cx, cy, 'down'));
+      },
     });
   }
 
