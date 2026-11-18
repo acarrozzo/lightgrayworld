@@ -3,11 +3,12 @@
 // The colors are Light Gray RPG's Classic theme: gray panels, one color per
 // meaning (HP red, MP blue, XP green, gold gold).
 
-import { W, H, HUD_H, drawText, drawTextCentered, drawTextOutlined, textWidth, wrap, panel, fillRect } from './gfx.js';
+import { W, H, HUD_H, drawText, drawTextCentered, drawTextOutlined, textWidth, wrap, panel, fillRect, makeCanvas, rng } from './gfx.js';
 import { pressed, label, withKeys } from './input.js';
 import { sfx } from './audio.js';
 import { ITEMS, SLOT_LABEL, statLine } from './data/items.js';
-import { QUESTS, SHOPS, questProgress } from './data/quests.js';
+import { QUESTS, SHOPS, ENDING, questProgress } from './data/quests.js';
+import { ENEMIES } from './data/enemies.js';
 import * as R from './rules.js';
 import { plain } from './world.js';
 import { saveGame } from './state.js';
@@ -16,7 +17,34 @@ import { newMapState, updateMap, drawMap, EVERYWHERE } from './map.js';
 const WRAP = 38;
 const TABS = ['STATUS', 'BAG', 'MAGIC', 'QUESTS'];
 const STAT_COLOR = { str: 'A', dex: 'I', def: 'K', mag: 'L' };
-const STAT_NOTE = { str: 'sword', dex: 'ranged, dodging', def: 'blocking', mag: 'spells, resisting' };
+// What a stat is, said as the roll it makes: more of it is a bigger die.
+const STAT_NOTE = {
+  str: (n) => `sword rolls 0-${n}`,
+  dex: (n) => `throws roll 0-${n}`,
+  def: (n) => `blocks roll 0-${n}`,
+  mag: (n) => `spells roll 0-${n}`,
+};
+
+// The ending: when each thing on the results card arrives, in frames.
+const END = { fade: 30, title: 40, kings: 84, kingGap: 26, count: 170, land: 230, stats: 246, ready: 262 };
+const REWARD = { chest: 20, line: 54, gap: 52, open: 2 };   // open: the chest opens with this line (and is empty)
+
+const bigCache = new Map();
+/** Pixel text at a whole multiple of its size. */
+function big(text, scale, color) {
+  const key = `${text}|${scale}|${color}`;
+  if (!bigCache.has(key)) {
+    const c = makeCanvas(textWidth(text) + 1, 8);
+    drawText(c.getContext('2d'), text, 0, 0, color);
+    const out = makeCanvas(c.width * scale, c.height * scale);
+    const og = out.getContext('2d');
+    og.imageSmoothingEnabled = false;
+    og.drawImage(c, 0, 0, out.width, out.height);
+    bigCache.set(key, out);
+    if (bigCache.size > 80) bigCache.delete(bigCache.keys().next().value);
+  }
+  return bigCache.get(key);
+}
 
 function bar(g, x, y, w, h, frac, color) {
   fillRect(g, x, y, w, h, '0');
@@ -72,9 +100,15 @@ export class UI {
     this.modal = { type: 'shop', id, sel: 0, note: '' };
   }
 
-  /** The end of the road, for now. The game goes on after it. */
-  credits(p) {
-    this.modal = { type: 'credits', t: 0, level: p.level, deaths: p.deaths, kills: Object.values(p.kills).reduce((a, b) => a + b, 0) };
+  /**
+   * The end of the road, for now: the run read back, the reward, the credits.
+   * run: R.runSummary. best: { isNew, frames } or null. The game goes on after.
+   */
+  ending(run, best = null, then = null) {
+    const r = rng(701);
+    const stars = Array.from({ length: 54 }, () => ({ x: Math.floor(r() * W), y: Math.floor(r() * H), k: Math.floor(r() * 64), gold: r() < 0.14 }));
+    const reward = ENDING.reward.map((line) => wrap(plain(line), 38));
+    this.modal = { type: 'ending', page: 0, t: 0, run, best, then, stars, reward };
   }
 
   deadCard(text, cb) {
@@ -114,9 +148,37 @@ export class UI {
     else if (m.type === 'dead') {
       m.t += 1;
       if (m.t > 70 && pressed.a) { this.modal = null; m.cb(); }
-    } else if (m.type === 'credits') {
-      m.t += 1;
-      if (m.t > 120 && (pressed.a || pressed.start)) this.modal = null;
+    } else if (m.type === 'ending') this.updateEnding(m);
+  }
+
+  updateEnding(m) {
+    m.t += 1;
+    const go = pressed.a || pressed.start;
+    if (m.page === 0) {
+      const n = Math.max(m.run.kings.length, 3);
+      for (let i = 0; i < n; i++) if (m.t === END.kings + i * END.kingGap) sfx.coin();
+      if (m.t > END.count && m.t < END.land && m.t % 4 === 0) sfx.text();
+      if (m.t === END.land) sfx.level();
+      if (go) {
+        if (m.t < END.ready) m.t = END.ready;        // the first press skips to the whole card
+        else { m.page = 1; m.t = 0; sfx.select(); }
+      }
+    } else if (m.page === 1) {
+      const last = REWARD.line + (m.reward.length - 1) * REWARD.gap;
+      if (m.t === REWARD.chest) sfx.item();
+      m.reward.forEach((_, i) => {
+        if (m.t !== REWARD.line + i * REWARD.gap) return;
+        if (i === REWARD.open) sfx.deny();
+        else if (i === m.reward.length - 1) sfx.secret();
+        else sfx.text();
+      });
+      if (go) {
+        if (m.t < last + 30) m.t = last + 30;
+        else { m.page = 2; m.t = 0; sfx.select(); }
+      }
+    } else if (m.t > 60 && go) {
+      this.modal = null;
+      if (m.then) m.then();
     }
   }
 
@@ -219,7 +281,7 @@ export class UI {
     else if (m.type === 'shop') this.drawShop(g, m);
     else if (m.type === 'map') drawMap(g, this, m);
     else if (m.type === 'dead') this.drawDead(g, m);
-    else if (m.type === 'credits') this.drawCredits(g, m);
+    else if (m.type === 'ending') this.drawEnding(g, m);
   }
 
   drawHud(g) {
@@ -241,6 +303,11 @@ export class UI {
     if (p.cp > 0 && (this.t >> 4) % 2 === 0) drawText(g, `+${p.cp}`, 84, 13, 'J');
     g.drawImage(this.S.fx.coin, 112, 12);
     drawText(g, `${p.gold}`, 123, 13, 'J');
+    if (!p.untimed) {
+      // The run clock. It stops, and turns gold, at Camp Hero.
+      const time = R.clock(p.flags.ended && p.splits.end !== undefined ? p.splits.end : p.frames);
+      drawText(g, time, 189 - textWidth(time), 13, p.flags.ended ? 'J' : '%');
+    }
 
     // The three slots, each lettered with the button that fires it.
     const slots = [
@@ -363,7 +430,7 @@ export class UI {
         const b = bonus[k];
         const num = b ? `${p[k]} ${b > 0 ? '+' : '-'}${Math.abs(b)} = ${eff[k]}` : `${p[k]}`;
         drawText(g, num, cx + 36, cy, '9');
-        drawText(g, STAT_NOTE[k], cx + 104, cy, 'a');
+        drawText(g, STAT_NOTE[k](Math.max(0, eff[k])), cx + 104, cy, 'a');
         cy += 10;
       });
       cy += 5;
@@ -423,6 +490,9 @@ export class UI {
         for (const line of wrap(q.objective, 36)) { drawText(g, line, cx + 6, cy, '9'); cy += 10; }
         cy += 4;
       }
+      if (p.flags.ended && !p.untimed && p.splits.end !== undefined) {
+        drawText(g, `Reached Camp Hero in ${R.clock(p.splits.end)}`, cx, y + H - HUD_H - 12 - 38, 'I');
+      }
       drawText(g, `Done: ${done}`, cx, y + H - HUD_H - 12 - 26, 'a');
       if (p.flags[EVERYWHERE.flag]) drawText(g, `\u2605 ${EVERYWHERE.name}`, cx + 60, y + H - HUD_H - 12 - 26, 'J');
     }
@@ -457,26 +527,103 @@ export class UI {
     drawText(g, `${label('a')} buys   ${label('back')} leaves`, x + 10, y + h - 14, '%');
   }
 
-  drawCredits(g, m) {
-    g.globalAlpha = Math.min(0.92, m.t / 60);
-    fillRect(g, 0, HUD_H, W, H - HUD_H, 'q');
+  drawEnding(g, m) {
+    // The world falls away to a night sky: Star City is right there.
+    g.globalAlpha = m.page === 0 ? Math.min(1, m.t / END.fade) : 1;
+    fillRect(g, 0, 0, W, H, 'q');
     g.globalAlpha = 1;
-    if (m.t < 40) return;
-    const lines = [
-      ['LIGHT GRAY MINI', 'J'],
-      ['', '9'],
-      ['You reached Camp Hero.', '9'],
-      ['Star City is right there.', '9'],
-      ['', '9'],
-      [`Level ${m.level}   ${m.kills} kills   ${m.deaths} ${m.deaths === 1 ? 'death' : 'deaths'}`, 'I'],
-      ['', '9'],
-      ['The rest of it is in Light Gray RPG.', 'a'],
-      ['Made by Anthony Carrozzo.', 'a'],
-    ];
-    lines.forEach(([text, color], i) => {
-      if (m.t > 40 + i * 9) drawTextCentered(g, text, W / 2, HUD_H + 34 + i * 12, color);
+    if (m.page === 0 && m.t < END.fade) return;
+    for (const s of m.stars) {
+      const phase = ((this.t + s.k * 5) >> 4) % 4;
+      if (phase === 3) continue;
+      fillRect(g, s.x, s.y, 1, 1, phase === 0 ? (s.gold ? 'J' : '8') : phase === 1 ? 'a' : 'j');
+    }
+    const blink = (this.t >> 4) % 2 === 0;
+    if (m.page === 0) this.drawEndingRun(g, m, blink);
+    else if (m.page === 1) this.drawEndingReward(g, m, blink);
+    else {
+      const lines = ENDING.credits.map((l) => plain(l));
+      lines.forEach((text, i) => {
+        if (m.t > 10 + i * 10) drawTextCentered(g, text, W / 2, 74 + i * 13, i === 0 ? 'J' : i === lines.length - 1 ? 'a' : '9');
+      });
+      if (m.best && m.best.frames) drawTextCentered(g, `Best ${R.clock(m.best.frames)}`, W / 2, 150, '%');
+      if (m.t > 60 && blink) drawTextCentered(g, '▶ Keep playing', W / 2, H - 26, 'J');
+    }
+  }
+
+  drawEndingRun(g, m, blink) {
+    const run = m.run;
+    const t = m.t;
+    if (t > END.title) {
+      const title = big('CAMP HERO', 2, 'J');
+      g.drawImage(big('CAMP HERO', 2, 'y'), Math.round((W - title.width) / 2) + 1, 15);
+      g.drawImage(title, Math.round((W - title.width) / 2), 14);
+    }
+    const said = ENDING.reached.map((l) => plain(l));
+    if (t > END.title + 14) drawTextCentered(g, said[0], W / 2, 36, '9');
+    if (t > END.title + 28) drawTextCentered(g, said[1], W / 2, 47, 'a');
+
+    // The three kings, left to right in the order they fell: the route.
+    const kings = run.kings.length ? run.kings : R.KINGS.map((slug) => ({ slug, frames: null }));
+    kings.forEach((k, i) => {
+      const at = END.kings + i * END.kingGap;
+      if (t < at) return;
+      const cx = 48 + i * 80;
+      const spr = this.S.creatureFor(ENEMIES[k.slug]).right[0];
+      const pop = t - at < 6 ? -(6 - (t - at)) : 0;
+      g.drawImage(spr, cx - spr.width / 2, 62 + pop + (32 - spr.height));
+      drawTextCentered(g, ENDING.kings[k.slug], cx, 98, 'J');
+      drawTextCentered(g, k.frames === null ? '-' : R.clock(k.frames), cx, 109, '9');
+      if (i < kings.length - 1 && t > at + 10) drawText(g, '→', cx + 37, 76, 'j');
     });
-    if (m.t > 120 && (this.t >> 4) % 2 === 0) drawTextCentered(g, '\u25b6 Keep playing', W / 2, H - 26, 'J');
+
+    if (t > END.count - 12) drawTextCentered(g, 'TIME', W / 2, 124, 'a');
+    if (t > END.count) {
+      const k = Math.min(1, (t - END.count) / (END.land - END.count));
+      const shown = run.timed ? R.clock(Math.round(run.frames * (1 - (1 - k) * (1 - k)))) : '--:--';
+      const landed = t >= END.land;
+      const num = big(shown, 3, landed && (t - END.land < 24) && (t >> 2) % 2 ? '8' : landed ? 'J' : '9');
+      g.drawImage(num, Math.round((W - num.width) / 2), 134);
+      if (!run.timed && landed) drawTextCentered(g, plain(ENDING.untimed), W / 2, 162, '%');
+      else if (landed && m.best && m.best.isNew && blink) drawTextCentered(g, 'NEW BEST', W / 2, 162, '$');
+      else if (landed && m.best && m.best.frames && !m.best.isNew) drawTextCentered(g, `Best ${R.clock(m.best.frames)}`, W / 2, 162, '%');
+    }
+    if (t > END.stats) {
+      const stats = `Level ${run.level}  ${run.kills} kills  ${run.deaths} ${run.deaths === 1 ? 'death' : 'deaths'}  ${run.rooms} rooms`;
+      drawTextCentered(g, stats, W / 2, 178, 'I');
+    }
+    if (t >= END.ready && blink) drawTextCentered(g, '▶', W / 2, 200, 'J');
+  }
+
+  drawEndingReward(g, m, blink) {
+    const t = m.t;
+    if (t > 4) {
+      const title = big('REWARD', 2, 'J');
+      g.drawImage(title, Math.round((W - title.width) / 2), 14);
+    }
+    if (t > REWARD.chest) {
+      // A gold chest, three times life size. It opens on the line that says why it is empty.
+      const open = t >= REWARD.line + REWARD.open * REWARD.gap;
+      const spr = open ? this.S.things.goldChestOpen : this.S.things.goldChest;
+      const bob = open ? 0 : Math.round(Math.sin(this.t / 9) * 1.5);
+      g.drawImage(spr, W / 2 - 24, 36 + bob, 48, 48);
+      if (!open) {
+        for (let i = 0; i < 5; i++) {
+          const a = this.t / 20 + i * 1.257;
+          if (((this.t >> 3) + i) % 3) fillRect(g, Math.round(W / 2 + Math.cos(a) * 34), Math.round(62 + Math.sin(a) * 20), 1, 1, i % 2 ? '8' : 'J');
+        }
+      }
+    }
+    let y = 96;
+    m.reward.forEach((lines, i) => {
+      const show = t >= REWARD.line + i * REWARD.gap;
+      for (const line of lines) {
+        if (show) drawTextCentered(g, line, W / 2, y, i === m.reward.length - 1 ? 'J' : '9');
+        y += 11;
+      }
+      y += 4;
+    });
+    if (t >= REWARD.line + (m.reward.length - 1) * REWARD.gap + 30 && blink) drawTextCentered(g, '▶', W / 2, 206, 'J');
   }
 
   drawDead(g, m) {

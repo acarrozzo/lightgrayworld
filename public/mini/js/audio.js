@@ -363,4 +363,6 @@ export const sfx = {
   dead() { arp(['e4', 'd4', 'c4', 'b3', 'e3'], 0.16, { duty: 0.5, tail: 0.8, vol: 0.24 }); },
   boss() { arp(['f3', 'gb3', 'f3', 'c3'], 0.12, { duty: 0.5, tail: 0.5, vol: 0.26 }); },
   secret() { arp(['e5', 'f#5', 'a5', 'b5', 'd6', 'e6'], 0.075, { duty: 0.25, tail: 0.4 }); },
+  crit() { arp(['b5', 'e6', 'b6', 'e7'], 0.035, { duty: 0.125, tail: 0.22, vol: 0.24 }); },
+  fanfare() { arp(['e4', 'e4', 'e4', 'g4', 'b4', 'e5', 'd5', 'e5', 'g5', 'b5', 'e6'], 0.11, { duty: 0.5, tail: 1.1, vol: 0.26 }); },
 };

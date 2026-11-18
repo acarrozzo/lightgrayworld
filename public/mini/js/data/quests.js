@@ -319,6 +319,22 @@ Object.assign(PEOPLE, {
   },
 });
 
+// What the ending says. The three kings are named for the keys they hold.
+// The reward card speaks as the Maker; every line is a placeholder for Anthony.
+export const ENDING = {
+  reached: ['DRAFT|You reached Camp Hero.', 'DRAFT|Star City is right there.'],
+  kings: { kraken: 'Greed', 'troll-king': 'Wrath', 'giant-mountain-giant': 'Pride' },
+  untimed: 'DRAFT|This save is older than the clock.',
+  reward: [
+    'DRAFT|This was supposed to give you something in Light Gray RPG.',
+    'DRAFT|A title. A cloak. A pet.',
+    'DRAFT|It is not hooked up yet.',
+    'DRAFT|Tell Anthony to get on that.',
+    'DRAFT|If you tell him, you get to decide the reward.',
+  ],
+  credits: ['LIGHT GRAY SUPER ADVENTURE', 'DRAFT|The rest of it is in Light Gray RPG.', 'Made by Anthony Carrozzo.'],
+};
+
 Object.assign(SHOPS, {
   michael: {
     name: "Michael's Weapon Shop", line: '"You wanderers really love swords."',

@@ -6,7 +6,8 @@ import { newPlayer } from './rules.js';
 // ?slot=name keeps a separate save, so a test run never touches the real one.
 const slot = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('slot') : null;
 const KEY = `lgmini.save.v1${slot ? `.${slot}` : ''}`;
-const PREFS = 'lgmini.prefs.v1';
+// The slot keeps its own settings and best time too, so a test run cannot set a record.
+const PREFS = `lgmini.prefs.v1${slot ? `.${slot}` : ''}`;
 
 export function loadGame() {
   try {
@@ -15,7 +16,10 @@ export function loadGame() {
     const data = JSON.parse(raw);
     if (!data || data.v !== 1) return null;
     // A save from an older build may be missing newer fields.
-    return { ...newPlayer(), ...data, gear: { ...newPlayer().gear, ...(data.gear || {}) } };
+    const player = { ...newPlayer(), ...data, gear: { ...newPlayer().gear, ...(data.gear || {}) } };
+    // A save from before the run clock: its time would be a lie, so it has none.
+    if (data.frames === undefined) player.untimed = true;
+    return player;
   } catch {
     return null;
   }

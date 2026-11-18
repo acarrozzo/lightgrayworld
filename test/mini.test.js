@@ -337,13 +337,14 @@ test('mini: a button is called what it is on the thing you are holding', async (
 
 test('mini: no text in the data names a pad button outright', async () => {
   const { ROOMS } = await load('data/rooms.js');
-  const { QUESTS, PEOPLE } = await load('data/quests.js');
+  const { QUESTS, PEOPLE, ENDING } = await load('data/quests.js');
   // "A swings" would be wrong on a keyboard. Lines name buttons with {a}, {b}, {x}, {y}.
   const bad = /\b[ABXY] (swings|throws|casts|eats|talks|closes|buys|uses|opens)\b|\bSTART (is|opens|closes)\b/;
   const lines = [];
   for (const room of Object.values(ROOMS)) for (const t of room.things || []) lines.push(...[t.text, t.full, t.msg, t.ask, t.locked, t.noTool].flat().filter(Boolean));
   for (const q of Object.values(QUESTS)) lines.push(q.remind, q.done, q.objective);
   for (const person of Object.values(PEOPLE)) lines.push(person.greeting, person.locked, ...(person.idle || []));
+  lines.push(...ENDING.reached, ...ENDING.reward, ...ENDING.credits, ENDING.untimed);
   for (const line of lines.filter(Boolean)) assert.ok(!bad.test(line), `names a button outright: ${line}`);
 });
 
@@ -390,4 +391,54 @@ test("mini: the hatchet is at Jack's cabin, and the pines add up to a boat", asy
   assert.equal(things('101').find((t) => t.t === 'chop').upTo, ITEMS.wood.cap, 'the Forest fills the bag: the twenty a boat costs');
   // Nothing still hands out wood for free.
   assert.deepEqual(where((t) => t.t === 'take' && t.item === 'wood'), []);
+});
+
+test('mini: a roll in the top tenth is a crit, and a crit doubles the damage', async () => {
+  const R = await load('rules.js');
+  assert.equal(R.isCrit(3, 3), true);
+  assert.equal(R.isCrit(2, 3), false);
+  assert.equal(R.isCrit(2, 2), false, 'a roll that small is never a crit');
+  assert.equal(R.isCrit(9, 10), true);
+  assert.equal(R.isCrit(8, 10), false);
+  // The attack rolls first, then the block. 0.99 is the top of a range, 0 the bottom.
+  const crit = R.strike(10, 4, fixed(0.99, 0));
+  assert.deepEqual([crit.a, crit.d, crit.dmg, crit.crit], [10, 0, 20, true]);
+  assert.deepEqual([crit.aMax, crit.dMax], [10, 4], 'both ranges come back so the dice can be shown');
+  const plainHit = R.strike(10, 4, fixed(0.5, 0.5));
+  assert.deepEqual([plainHit.a, plainHit.d, plainHit.dmg, plainHit.crit], [5, 2, 3, false]);
+  const blocked = R.strike(3, 9, fixed(0.99, 0.99));
+  assert.deepEqual([blocked.dmg, blocked.crit], [0, false], 'a top roll that is blocked whole is not a crit');
+});
+
+test('mini: the run clock reads as a clock, and the kings are listed in the order they fell', async () => {
+  const R = await load('rules.js');
+  assert.equal(R.clock(0), '0:00');
+  assert.equal(R.clock(247 * 60 + 59), '4:07');
+  assert.equal(R.clock(3729 * 60), '1:02:09');
+  const p = R.newPlayer();
+  assert.equal(p.frames, 0);
+  p.frames = 1000;
+  p.splits = { 'troll-king': 300, kraken: 700, 'goblin-chief': 100 };
+  p.kills = { rat: 3, kraken: 1 };
+  const run = R.runSummary(p, 12);
+  assert.deepEqual(run.kings.map((k) => k.slug), ['troll-king', 'kraken'], 'only the three kings, in kill order');
+  assert.deepEqual([run.kills, run.rooms, run.timed, run.frames], [4, 12, true, 1000]);
+  assert.equal(R.isBest(run, null), true);
+  assert.equal(R.isBest(run, { frames: 900 }), false);
+  assert.equal(R.isBest(run, { frames: 1001 }), true);
+  p.untimed = true;
+  assert.equal(R.isBest(R.runSummary(p, 12), null), false, 'a save from before the clock sets no record');
+});
+
+test('mini: the ending has words for every king and a reward card', async () => {
+  const { ENDING } = await load('data/quests.js');
+  const { ENEMIES } = await load('data/enemies.js');
+  const R = await load('rules.js');
+  for (const slug of R.KINGS) {
+    assert.ok(ENEMIES[slug] && ENEMIES[slug].boss, `${slug} is not a boss`);
+    assert.ok(ENDING.kings[slug], `no name on the results card for ${slug}`);
+  }
+  assert.equal(ENDING.reached.length, 2);
+  assert.ok(ENDING.reward.length >= 3 && ENDING.reward.every((l) => typeof l === 'string' && l.length <= 76), 'reward lines fit two rows each');
+  assert.ok(ENDING.reward.some((l) => l.includes('Anthony')));
 });

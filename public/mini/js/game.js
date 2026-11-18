@@ -2,7 +2,7 @@
 // lives there, and every roll. Nothing here decides a number on its own; the
 // dice are in rules.js and the content is in data/.
 
-import { W, TILE, COLS, ROWS, HUD_H, H, drawTextOutlined, textWidth, fillRect } from './gfx.js';
+import { W, TILE, COLS, ROWS, HUD_H, H, drawText, drawTextOutlined, textWidth, fillRect } from './gfx.js';
 import { bakeRoom, TILES, waterGlints } from './art-tiles.js';
 import { ROOMS } from './data/rooms.js';
 import { ENEMIES } from './data/enemies.js';
@@ -13,7 +13,7 @@ import { neighbor, check, edgeGate, EDGES } from './world.js';
 import { pressed, axis, clearInput, label } from './input.js';
 import { sfx, playSong } from './audio.js';
 import { saveGame } from './state.js';
-import { foundEverything, EVERYWHERE } from './map.js';
+import { foundEverything, roomsFound, EVERYWHERE } from './map.js';
 
 const FIELD_H = ROWS * TILE;
 const SPEED = 1.25;
@@ -23,6 +23,13 @@ const HURT = { x: 3, y: 3, w: 10, h: 12 };  // the hero's body, for teeth
 const DIRV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
 
 const rnd = (n) => Math.floor(Math.random() * n);
+const CLASH_SETTLE = 6;   // frames the dice tumble before they show what was rolled
+
+/** The feed line for one of your own hits: what hit, both rolls, what came of it. */
+function rollFeed(verb, verbColor, name, roll, color) {
+  if (roll.crit) return [['CRIT', '$'], [name, 'a'], [`${roll.a}`, color], ['-', '%'], [`${roll.d}`, 'K'], ['x2 =', '%'], [`${roll.dmg}`, '$']];
+  return [[verb, verbColor], [name, 'a'], [`${roll.a}`, color], ['-', '%'], [`${roll.d}`, 'K'], ['=', '%'], [`${roll.dmg}`, roll.dmg ? '9' : '%']];
+}
 const overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
 export class Game {
@@ -40,6 +47,8 @@ export class Game {
     this.shots = [];
     this.floats = [];
     this.parts = [];
+    this.clashes = [];        // the two dice of a hit, shown where it landed
+    this.shake = 0;
     this.things = [];
     this.mode = 'play';
     this.slide = null;
@@ -80,6 +89,7 @@ export class Game {
     this.things = things || this.makeThings(id);
     this.mobs = [];
     this.shots = [];
+    this.clashes = [];
     this.hero.boom = false;
     this.canSail = R.hasItem(this.p, 'wooden-boat');
     this.rebuildSolid();
@@ -263,6 +273,7 @@ export class Game {
 
   update() {
     this.t += 1;
+    if (this.shake > 0) this.shake -= 1;
     if (this.mode === 'slide') return this.updateSlide();
     if (this.mode === 'fade') return this.updateFade();
     if (this.mode === 'dead') return undefined;
@@ -278,8 +289,10 @@ export class Game {
   }
 
   updateBits() {
-    for (const f of this.floats) { f.y -= 0.45; f.t += 1; }
+    for (const f of this.floats) { f.t += 1; if (f.t > 0) f.y -= 0.45; }
     this.floats = this.floats.filter((f) => f.t < 50);
+    for (const c of this.clashes) { c.t += 1; if (c.t > CLASH_SETTLE) c.y -= 0.45; }
+    this.clashes = this.clashes.filter((c) => c.t < 42);
     for (const q of this.parts) { q.x += q.vx; q.y += q.vy; q.vy += q.g || 0; q.t += 1; }
     this.parts = this.parts.filter((q) => q.t < q.life);
   }
@@ -457,10 +470,8 @@ export class Game {
         this.ui.setFeed([[`The ${m.def.name} is flying.`, '9'], ["A sword can't reach it.", 'a']]);
         continue;
       }
-      const roll = R.opposedRoll(stats.str, m.def.def);
-      this.hurtMob(m, roll.dmg, DIRV[h.dir], [
-        ['You hit', '9'], [m.def.name, 'a'], [`${roll.a}`, 'A'], ['-', '%'], [`${roll.d}`, 'K'], ['=', '%'], [`${roll.dmg}`, roll.dmg ? '9' : '%'],
-      ]);
+      const roll = R.strike(stats.str, m.def.def);
+      this.hurtMob(m, roll.dmg, DIRV[h.dir], rollFeed('You hit', '9', m.def.name, roll, 'A'), roll, 'A');
     }
     // Bushes fall to anything with an edge.
     if (!this.p.gear.sword) return;
@@ -492,25 +503,49 @@ export class Game {
 
   // ------------------------------------------------------- hurting things
 
-  float(x, y, text, color) {
-    this.floats.push({ x, y, text, color, t: 0 });
+  /** delay: frames to wait before it shows, so a number can land after its dice. */
+  float(x, y, text, color, delay = 0) {
+    this.floats.push({ x, y, text, color, t: -delay });
   }
 
-  hurtMob(m, dmg, dir, feed) {
+  /**
+   * Show the dice of a hit over whatever it hit: the attack roll on the left,
+   * the block on the right (none for a spell nothing blocks). They tumble for a
+   * moment, meet, and the damage number comes out underneath.
+   */
+  clash(cx, y, roll, colorA, colorD = 'K') {
+    this.clashes.push({
+      x: Math.max(20, Math.min(W - 20, Math.round(cx))), y: Math.max(2, y),
+      a: roll.a, d: roll.d === undefined ? null : roll.d,
+      aMax: roll.aMax || roll.a, dMax: roll.dMax || roll.d || 0,
+      crit: !!roll.crit, ca: colorA, cd: colorD, t: 0, seed: rnd(97),
+    });
+    if (this.clashes.length > 6) this.clashes.shift();
+  }
+
+  /** roll: the dice behind the number, when there are any to show. */
+  hurtMob(m, dmg, dir, feed, roll = null, colorA = 'A') {
     m.aggro = true;
     m.flash = 8;
     this.ui.setFeed(feed);
     const fx = m.x + m.spr.w / 2 - 3;
+    const wait = roll ? CLASH_SETTLE : 0;
+    if (roll) this.clash(m.x + m.spr.w / 2, m.y - 16, roll, colorA);
     if (dmg <= 0) {
       sfx.block();
-      this.float(fx, m.y - 4, '0', '%');
+      this.float(fx, m.y - 4, '0', '%', wait);
       m.stun = 5;
       const nudge = m.def.ai === 'turret' ? 0 : 1.2;
       m.kx = dir[0] * nudge; m.ky = dir[1] * nudge;
       return;
     }
-    sfx.hit();
-    this.float(fx - (dmg > 9 ? 3 : 0), m.y - 4, `${dmg}`, '8');
+    const crit = !!(roll && roll.crit);
+    if (crit) {
+      sfx.crit();
+      this.shake = 8;
+      this.float(fx - 9, m.y - 27, 'CRIT', '$', wait);
+    } else sfx.hit();
+    this.float(fx - (dmg > 9 ? 3 : 0), m.y - 4, `${dmg}`, crit ? '$' : '8', wait);
     m.hp -= dmg;
     m.stun = m.def.boss ? 6 : 12;
     const push = m.def.ai === 'turret' ? 0 : m.def.boss ? 1 : 2.6;
@@ -550,6 +585,10 @@ export class Game {
     }
     if (d.boss) {
       p.downAt[m.slug] = Date.now();
+      if (p.splits[m.slug] === undefined) {
+        p.splits[m.slug] = p.frames;
+        if (R.KINGS.includes(m.slug)) this.ui.toast(`${d.name}  ${R.clock(p.frames)}`, 'a');
+      }
       playSong(this.room.music);
     }
     this.noteProgress(m.slug, got);
@@ -595,18 +634,21 @@ export class Game {
     let dy = h.y + 8 - my;
     const len = Math.hypot(dx, dy) || 1;
     dx /= len; dy /= len;
+    // Each kind of attack is blocked by its own stat, and the die wears that stat's color.
+    const guard = d.type === 'ranged' ? 'I' : d.type === 'magic' ? 'L' : 'K';
     const feed = [[d.name, 'a'], [hit.special ? `${hit.special}s you` : 'hits you', '9'],
-      [`${hit.a}`, '@'], ['-', '%'], [`${hit.d}`, 'K'], ['=', '%'], [`${hit.dmg}`, hit.dmg ? '@' : '%']];
+      [`${hit.a}`, '@'], ['-', '%'], [`${hit.d}`, guard], ['=', '%'], [`${hit.dmg}`, hit.dmg ? '@' : '%']];
     this.ui.setFeed(feed);
+    this.clash(h.x + 8, h.y - 18, { ...hit, aMax: d.att, dMax: Math.max(0, R.defenseFor(d.type, R.effectiveStats(p))) }, '@', guard);
     if (hit.dmg <= 0) {
       sfx.block();
-      this.float(h.x + 5, h.y - 6, '0', '%');
+      this.float(h.x + 5, h.y - 6, '0', '%', CLASH_SETTLE);
       h.inv = 22;
       h.kx = dx * 1.6; h.ky = dy * 1.6; h.kt = 6;
       return;
     }
     sfx.hurt();
-    this.float(h.x + 5, h.y - 6, `${hit.dmg}`, '@');
+    this.float(h.x + 5, h.y - 6, `${hit.dmg}`, '@', CLASH_SETTLE);
     p.hp = Math.max(0, p.hp - hit.dmg);
     h.inv = 50;
     h.kx = dx * 3; h.ky = dy * 3; h.kt = 10;
@@ -874,15 +916,13 @@ export class Game {
         const dir = [Math.sign(s.vx), Math.sign(s.vy)];
         if (s.kind === 'boom' || s.kind === 'arrow') {
           if (s.kind === 'boom') { s.hits.add(m); s.back = true; } else s.dead = true;
-          const roll = R.opposedRoll(stats.dex, m.def.def);
-          this.hurtMob(m, roll.dmg, dir, [
-            [s.kind === 'boom' ? 'Boomerang' : 'Arrow', 'I'], [m.def.name, 'a'], [`${roll.a}`, 'I'], ['-', '%'], [`${roll.d}`, 'K'], ['=', '%'], [`${roll.dmg}`, roll.dmg ? '9' : '%'],
-          ]);
+          const roll = R.strike(stats.dex, m.def.def);
+          this.hurtMob(m, roll.dmg, dir, rollFeed(s.kind === 'boom' ? 'Boomerang' : 'Arrow', 'I', m.def.name, roll, 'I'), roll, 'I');
         } else {
           s.dead = true;
           const spell = R.SPELLS[s.spell];
           const dmg = spell.roll(stats.mag);
-          this.hurtMob(m, dmg, dir, [[spell.name, 'L'], [m.def.name, 'a'], [`${dmg}`, '9']]);
+          this.hurtMob(m, dmg, dir, [[spell.name, 'L'], [m.def.name, 'a'], [`${dmg}`, '9']], { a: dmg, aMax: 2 + Math.max(0, stats.mag) }, 'L');
         }
       }
     }
@@ -1149,7 +1189,7 @@ export class Game {
       if (xp) this.gainXp(xp);
       this.rebuildSolid();       // a finished quest can take a gate out of the way
       saveGame(p);
-      if (person.ending && !p.flags.ended) { p.flags.ended = true; saveGame(p); ui.credits(p); return; }
+      if (person.ending && !p.flags.ended) { this.finish(); return; }
       this.offerLessons(who);
     });
   }
@@ -1184,6 +1224,19 @@ export class Game {
       }
       saveGame(p);
     });
+  }
+
+  /** The end of the road: the clock stops, the run is read back, and the game goes on. */
+  finish() {
+    const p = this.p;
+    p.flags.ended = true;
+    p.splits.end = p.frames;
+    saveGame(p);
+    playSong(null);
+    sfx.fanfare();
+    const run = R.runSummary(p, roomsFound(p));
+    const best = this.onFinish ? this.onFinish(run) : false;
+    this.ui.ending(run, best, () => playSong(this.room.music));
   }
 
   // ------------------------------------------------------------------ draw
@@ -1270,6 +1323,28 @@ export class Game {
     }
   }
 
+  /** Two dice meeting. Until they settle they show any number they could have been. */
+  drawClash(g, c) {
+    if (c.t > 32 && (c.t >> 1) % 2) return;                // blink out
+    const rolling = c.t < CLASH_SETTLE;
+    const gap = rolling ? Math.round((1 - c.t / CLASH_SETTLE) * 10) : 0;
+    const y = Math.round(c.y);
+    const face = (value, max, salt) => `${rolling ? (c.seed * salt + c.t * 7) % (max + 1) : value}`;
+    const die = (text, x, color) => {
+      const w = textWidth(text) + 4;
+      fillRect(g, x - 1, y - 1, w + 2, 11, '0');
+      fillRect(g, x, y, w, 9, color);
+      fillRect(g, x, y + 8, w, 1, 'q');
+      drawText(g, text, x + 2, y + 1, 'q');
+    };
+    const hot = c.crit && !rolling && (c.t >> 2) % 2 === 0;
+    const a = face(c.a, c.aMax, 3);
+    if (c.d === null) { die(a, c.x - Math.round((textWidth(a) + 4) / 2), c.ca); return; }
+    die(a, c.x - 1 - gap - (textWidth(a) + 4), hot ? '$' : c.ca);
+    die(face(c.d, c.dMax, 5), c.x + 1 + gap, c.cd);
+    if (!rolling && c.t < CLASH_SETTLE + 4) fillRect(g, c.x - 1, y + 1, 2, 7, '8');   // the moment they meet
+  }
+
   drawRoomLayer(g, bake, things, ox, oy, live) {
     g.drawImage(bake.bg, ox, oy);
     if (!live) { this.drawThings(g, things, ox, oy, null); return; }
@@ -1299,6 +1374,7 @@ export class Game {
       g.drawImage(this.bake.fg, ox, oy);
       g.drawImage(s.toBake.fg, nx, ny);
     } else {
+      if (this.shake > 0) g.translate(rnd(3) - 1, rnd(3) - 1);
       this.drawRoomLayer(g, this.bake, this.things, 0, 0, true);
       const list = [];
       this.drawThings(g, this.things, 0, 0, list);
@@ -1319,7 +1395,8 @@ export class Game {
         if (q.poof) g.drawImage(this.S.fx.poof[Math.min(2, Math.floor(q.t / 5))], Math.round(q.x), Math.round(q.y));
         else fillRect(g, q.x, q.y, 2, 2, q.color);
       }
-      for (const f of this.floats) drawTextOutlined(g, f.text, Math.round(f.x), Math.round(f.y), f.color, '0');
+      for (const c of this.clashes) this.drawClash(g, c);
+      for (const f of this.floats) if (f.t >= 0) drawTextOutlined(g, f.text, Math.round(f.x), Math.round(f.y), f.color, '0');
 
       // What A would do right now.
       if (this.mode === 'play' && !this.ui.busy && this.hero.swing <= 0) {

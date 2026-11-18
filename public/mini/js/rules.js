@@ -19,6 +19,25 @@ export function opposedRoll(off, def, r = Math.random) {
   return { a, d, dmg: Math.max(0, a - d) };
 }
 
+/** A roll in the top tenth of its range is a crit. Tiny rolls never are. */
+export function isCrit(roll, max) {
+  const top = Math.floor(max);
+  return top >= 3 && roll >= Math.ceil(top * 0.9);
+}
+
+/**
+ * The player's own hit: the same opposed roll, with both ranges kept so the
+ * dice can be shown, and doubled when the attack roll is a crit.
+ */
+export function strike(off, def, r = Math.random) {
+  const roll = opposedRoll(off, def, r);
+  const crit = roll.dmg > 0 && isCrit(roll.a, off);
+  return {
+    ...roll, crit, dmg: crit ? roll.dmg * 2 : roll.dmg,
+    aMax: Math.max(0, Math.floor(off)), dMax: Math.max(0, Math.floor(def)),
+  };
+}
+
 /** Total XP needed to reach the level after `level`: the original cubic curve. */
 export function nextLevelXp(level) {
   return 2 * Math.pow(level + 1, 3);
@@ -129,6 +148,38 @@ export function addXp(player, amount) {
   return ups;
 }
 
+// ------------------------------------------------------------- the run clock
+
+/** The three kings Rigel wants dead, in no order. */
+export const KINGS = ['kraken', 'troll-king', 'giant-mountain-giant'];
+
+/** Frames (60 a second) as a clock: 4:07, 41:12, 1:02:09. */
+export function clock(frames) {
+  const s = Math.floor((frames || 0) / 60);
+  const two = (n) => String(n).padStart(2, '0');
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return h ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`;
+}
+
+/** What the results card shows. A save from before the clock existed has no time. */
+export function runSummary(player, rooms = 0) {
+  const kings = KINGS.filter((k) => player.splits[k] !== undefined)
+    .sort((a, b) => player.splits[a] - player.splits[b])
+    .map((slug) => ({ slug, frames: player.splits[slug] }));
+  return {
+    frames: player.frames, timed: !player.untimed,
+    level: player.level, deaths: player.deaths, rooms,
+    kills: Object.values(player.kills).reduce((a, b) => a + b, 0),
+    kings,
+  };
+}
+
+/** A timed run beats no record, or a slower one. */
+export function isBest(run, best) {
+  return !!run.timed && (!best || !(best.frames > 0) || run.frames < best.frames);
+}
+
 export function newPlayer() {
   return {
     v: 1,
@@ -150,6 +201,8 @@ export function newPlayer() {
     seen: {},           // room id -> true
     downAt: {},         // boss slug -> time it was last killed
     deaths: 0,
+    frames: 0,          // the run clock, in 60ths of a second
+    splits: {},         // boss slug -> the clock when it first fell
     hub: '001',
   };
 }

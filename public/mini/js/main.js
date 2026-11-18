@@ -6,7 +6,7 @@ import { bakeRoom } from './art-tiles.js';
 import { initInput, pollInput, pressed, label } from './input.js';
 import { initAudio, playSong, setMuted, isMuted, sfx } from './audio.js';
 import { loadGame, clearSave, loadPrefs, savePrefs } from './state.js';
-import { newPlayer, addItem, takeGear } from './rules.js';
+import { newPlayer, addItem, takeGear, isBest, clock } from './rules.js';
 import { Game } from './game.js';
 import { UI } from './ui.js';
 import { ROOMS, START } from './data/rooms.js';
@@ -18,15 +18,15 @@ g.imageSmoothingEnabled = false;
 
 const prefs = loadPrefs();
 setMuted(!!prefs.muted);
+let saved = loadGame();
 
 const S = buildSprites();
 const problems = validateWorld();
-if (problems.length) console.warn('Light Gray Mini: world data problems\n' + problems.join('\n'));
+if (problems.length) console.warn('Light Gray Super Adventure: world data problems\n' + problems.join('\n'));
 
 let scene = 'title';
 let game = null;
 let ui = null;
-let saved = loadGame();
 const title = { sel: 0, confirm: false, t: 0, backdrop: bakeRoom({ ...ROOMS['000'], id: '000' }).bg };
 
 // ------------------------------------------------------------------ sizing
@@ -52,6 +52,15 @@ new MutationObserver(fit).observe(document.body, { attributes: true, attributeFi
 function begin(player, fresh) {
   ui = new UI(S);
   game = new Game({ sprites: S, ui, player });
+  // The first time at Camp Hero: keep the fastest run, which outlives New Game.
+  game.onFinish = (run) => {
+    const isNew = isBest(run, prefs.best);
+    if (isNew) {
+      prefs.best = { frames: run.frames, level: run.level, deaths: run.deaths };
+      savePrefs(prefs);
+    }
+    return prefs.best ? { isNew, frames: prefs.best.frames } : null;
+  };
   if (fresh) {
     game.enterRoom(START.room, START.cx, START.cy, START.dir);
   } else {
@@ -76,19 +85,23 @@ function begin(player, fresh) {
 
 function updateTitle() {
   title.t += 1;
-  const options = saved ? ['Continue', 'New Game'] : ['Start'];
+  const options = titleOptions();
   if (title.confirm) {
     if (pressed.a) { clearSave(); saved = null; sfx.confirm(); begin(newPlayer(), true); }
     else if (pressed.b || pressed.start) { title.confirm = false; sfx.select(); }
     return;
   }
-  if (pressed.up || pressed.down) { title.sel = (title.sel + 1) % options.length; sfx.select(); }
+  if (pressed.up || pressed.down) { title.sel = (title.sel + (pressed.up ? options.length - 1 : 1)) % options.length; sfx.select(); }
   if (!(pressed.a || pressed.start)) return;
-  sfx.confirm();
   const pick = options[Math.min(title.sel, options.length - 1)];
+  sfx.confirm();
   if (pick === 'Continue') begin(saved, false);
   else if (saved) title.confirm = true;
   else begin(newPlayer(), true);
+}
+
+function titleOptions() {
+  return saved ? ['Continue', 'New Game'] : ['Start'];
 }
 
 function big(text, scale, color) {
@@ -102,7 +115,7 @@ function big(text, scale, color) {
 }
 const LOGO = big('LIGHT GRAY', 3, '7');
 const LOGO_SHADE = big('LIGHT GRAY', 3, '2');
-const MINI = big('MINI', 2, 'J');
+const SUBTITLE = big('SUPER ADVENTURE', 2, 'J');
 
 function drawTitle() {
   fillRect(g, 0, 0, W, H, 'q');
@@ -116,14 +129,14 @@ function drawTitle() {
   const lx = Math.round((W - LOGO.width) / 2);
   g.drawImage(LOGO_SHADE, lx + 2, 34);
   g.drawImage(LOGO, lx, 32);
-  g.drawImage(MINI, Math.round((W - MINI.width) / 2), 62);
-  drawTextCentered(g, 'Room Zero to Star City. Eventually.', W / 2, 86, 'a');
+  g.drawImage(SUBTITLE, Math.round((W - SUBTITLE.width) / 2), 62);
+  drawTextCentered(g, 'A bit of Light Gray RPG.', W / 2, 86, 'a');
 
   if (title.confirm) {
     drawTextCentered(g, 'Erase the old save?', W / 2, 160, '9');
     drawTextCentered(g, `${label('a')} erases it.  ${label('back')} goes back.`, W / 2, 174, 'J');
   } else {
-    const options = saved ? ['Continue', 'New Game'] : ['Start'];
+    const options = titleOptions();
     options.forEach((o, i) => {
       const y = 160 + i * 13;
       const on = i === Math.min(title.sel, options.length - 1);
@@ -131,6 +144,7 @@ function drawTitle() {
       if (on && (title.t >> 4) % 2 === 0) drawText(g, '▶', W / 2 - textWidth(o) / 2 - 10, y, 'J');
     });
     if (saved) drawTextCentered(g, `Level ${saved.level}  ${ROOMS[saved.room] ? ROOMS[saved.room].name : ''}`, W / 2, 192, '%');
+    if (prefs.best && prefs.best.frames) drawTextCentered(g, `Best ${clock(prefs.best.frames)}`, W / 2, 204, '%');
   }
   if (isMuted()) drawText(g, 'sound off', 4, 4, '%');
 }
@@ -144,6 +158,8 @@ function tick() {
     savePrefs(prefs);
   }
   if (scene === 'title') { updateTitle(); return; }
+  // The run clock: it counts whenever the game is open, and stops at Camp Hero.
+  if (!game.p.flags.ended) game.p.frames = (game.p.frames || 0) + 1;
   const was = ui.busy;
   ui.update();
   if (!was && !ui.busy) game.update();
