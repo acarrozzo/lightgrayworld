@@ -3,7 +3,7 @@
 import { W, H, HUD_H, drawText, drawTextCentered, textWidth, fillRect, makeCanvas } from './gfx.js';
 import { buildSprites } from './art-sprites.js';
 import { bakeRoom } from './art-tiles.js';
-import { initInput, pollInput, pressed } from './input.js';
+import { initInput, pollInput, pressed, label } from './input.js';
 import { initAudio, playSong, setMuted, isMuted, sfx } from './audio.js';
 import { loadGame, clearSave, loadPrefs, savePrefs } from './state.js';
 import { newPlayer, addItem, takeGear } from './rules.js';
@@ -121,7 +121,7 @@ function drawTitle() {
 
   if (title.confirm) {
     drawTextCentered(g, 'Erase the old save?', W / 2, 160, '9');
-    drawTextCentered(g, 'A erases it.  B goes back.', W / 2, 174, 'J');
+    drawTextCentered(g, `${label('a')} erases it.  ${label('back')} goes back.`, W / 2, 174, 'J');
   } else {
     const options = saved ? ['Continue', 'New Game'] : ['Start'];
     options.forEach((o, i) => {

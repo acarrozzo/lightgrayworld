@@ -4,7 +4,7 @@
 // meaning (HP red, MP blue, XP green, gold gold).
 
 import { W, H, HUD_H, drawText, drawTextCentered, drawTextOutlined, textWidth, wrap, panel, fillRect } from './gfx.js';
-import { pressed } from './input.js';
+import { pressed, label, withKeys } from './input.js';
 import { sfx } from './audio.js';
 import { ITEMS, SLOT_LABEL, statLine } from './data/items.js';
 import { QUESTS, SHOPS, questProgress } from './data/quests.js';
@@ -44,7 +44,7 @@ export class UI {
   say(speaker, text, then = null) {
     const pages = [];
     for (const t of Array.isArray(text) ? text : [text]) {
-      const lines = wrap(plain(t), WRAP);
+      const lines = wrap(withKeys(plain(t)), WRAP);
       for (let i = 0; i < lines.length; i += 3) pages.push(lines.slice(i, i + 3));
     }
     if (!pages.length) { if (then) then(); return; }
@@ -53,7 +53,7 @@ export class UI {
 
   /** A short list to pick from. cb gets the option's value, or null on B. */
   choose(title, options, cb) {
-    this.modal = { type: 'choose', title: plain(title), options, sel: 0, cb };
+    this.modal = { type: 'choose', title: withKeys(plain(title)), options, sel: 0, cb };
   }
 
   openMenu() {
@@ -242,11 +242,11 @@ export class UI {
     g.drawImage(this.S.fx.coin, 112, 12);
     drawText(g, `${p.gold}`, 123, 13, 'J');
 
-    // The three slots, lettered like the pad.
+    // The three slots, each lettered with the button that fires it.
     const slots = [
-      ['B', p.gear.ranged ? (ITEMS[p.gear.ranged].arrow ? 'bow' : 'boomerang') : null],
-      ['Y', p.spell ? 'spell' : null],
-      ['X', p.quick && p.bag[p.quick] ? (ITEMS[p.quick].icon || 'potion') : null],
+      [label('b'), p.gear.ranged ? (ITEMS[p.gear.ranged].arrow ? 'bow' : 'boomerang') : null],
+      [label('y'), p.spell ? 'spell' : null],
+      [label('x'), p.quick && p.bag[p.quick] ? (ITEMS[p.quick].icon || 'potion') : null],
     ];
     slots.forEach(([letter, icon], i) => {
       const x = 192 + i * 21;
@@ -254,7 +254,7 @@ export class UI {
       fillRect(g, x + 1, 3, 18, 17, 'Q');
       drawText(g, letter, x + 2, 4, 'a');
       if (icon) g.drawImage(this.S.icons[icon], x + 8, 10);
-      if (letter === 'X' && icon) {
+      if (i === 2 && icon) {
         const n = `${Math.min(99, p.bag[p.quick])}`;
         drawText(g, n, x + 19 - textWidth(n), 4, '9');
       }
@@ -355,7 +355,7 @@ export class UI {
       drawText(g, `XP ${p.xp}/${R.nextLevelXp(p.level)}`, cx + 60, cy, 'I');
       drawText(g, `${p.gold} gold`, cx + 150, cy, 'J');
       cy += 12;
-      drawText(g, p.cp > 0 ? `Points to spend: ${p.cp}   A adds one` : 'No points to spend. Level up.', cx, cy, p.cp > 0 ? 'J' : 'a');
+      drawText(g, p.cp > 0 ? `Points to spend: ${p.cp}   ${label('a')} adds one` : 'No points to spend. Level up.', cx, cy, p.cp > 0 ? 'J' : 'a');
       cy += 13;
       R.STAT_KEYS.forEach((k, i) => {
         if (i === m.row) drawText(g, '▶', cx, cy, 'J');
@@ -377,21 +377,21 @@ export class UI {
         cy += 10;
       }
     } else if (m.tab === 1) {
-      if (!rows.length) drawText(g, 'Nothing to eat or drink.', cx, cy, 'a');
+      if (!rows.length) { drawText(g, 'Nothing to eat or drink.', cx, cy, 'a'); cy += 12; }
       rows.forEach((slug, i) => {
         const item = ITEMS[slug];
         if (i === m.row) drawText(g, '▶', cx, cy, 'J');
         g.drawImage(this.S.icons[item.icon || 'potion'], cx + 10, cy - 1);
         drawText(g, `${item.name} ×${p.bag[slug]}`, cx + 24, cy, i === m.row ? 'J' : '9');
         drawText(g, statLine(item), cx + 130, cy, 'I');
-        if (p.quick === slug) drawText(g, 'X', cx + 190, cy, 'a');
+        if (p.quick === slug) drawText(g, label('x'), cx + 190, cy, 'a');
         cy += 12;
       });
       cy += 4;
       fillRect(g, cx, cy, W - 36, 1, 'j');
       cy += 5;
       const keys = Object.keys(p.bag).filter((s) => ITEMS[s] && ITEMS[s].quest);
-      drawText(g, keys.length ? 'Carrying' : 'A uses it and puts it on X.', cx, cy, 'a');
+      drawText(g, keys.length ? 'Carrying' : `${label('a')} uses it and puts it on ${label('x')}.`, cx, cy, 'a');
       cy += 11;
       for (const slug of keys) {
         g.drawImage(this.S.icons[ITEMS[slug].icon || 'key'], cx, cy - 1);
@@ -405,7 +405,7 @@ export class UI {
         if (i === m.row) drawText(g, '▶', cx, cy, 'J');
         drawText(g, s.name, cx + 10, cy, i === m.row ? 'J' : '9');
         drawText(g, `${s.mp} MP`, cx + 110, cy, 'E');
-        if (p.spell === slug) drawText(g, 'Y', cx + 150, cy, 'a');
+        if (p.spell === slug) drawText(g, label('y'), cx + 150, cy, 'a');
         cy += 11;
         drawText(g, s.blurb, cx + 10, cy, 'a');
         cy += 14;
@@ -426,7 +426,8 @@ export class UI {
       drawText(g, `Done: ${done}`, cx, y + H - HUD_H - 12 - 26, 'a');
       if (p.flags[EVERYWHERE.flag]) drawText(g, `\u2605 ${EVERYWHERE.name}`, cx + 60, y + H - HUD_H - 12 - 26, 'J');
     }
-    drawText(g, 'START closes', W - 16 - 10 - textWidth('START closes'), y + H - HUD_H - 12 - 14, '%');
+    const closes = `${label('back')} closes`;
+    drawText(g, closes, W - 16 - 10 - textWidth(closes), y + H - HUD_H - 12 - 14, '%');
   }
 
   drawShop(g, m) {
@@ -453,7 +454,7 @@ export class UI {
       cy += 13;
     });
     if (m.note) drawText(g, m.note, x + 10, y + h - 26, '9');
-    drawText(g, 'A buys   B leaves', x + 10, y + h - 14, '%');
+    drawText(g, `${label('a')} buys   ${label('back')} leaves`, x + 10, y + h - 14, '%');
   }
 
   drawCredits(g, m) {

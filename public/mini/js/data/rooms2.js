@@ -84,6 +84,9 @@ function build(id, def) {
 }
 
 const FULL = 'Everything is full again.';
+
+// Pines fall to a hatchet, two wood each, and grow back when you leave.
+const pines = (cells, lines) => cells.map(([x, y]) => ({ t: 'chop', x, y, item: 'wood', gives: 2, ...lines }));
 const field = { sheet: 'field', theme: 'field', music: 'field' };
 const forest = { sheet: 'field', theme: 'forest', music: 'forest' };
 const town = { sheet: 'field', theme: 'town', music: 'town', safe: true };
@@ -115,16 +118,21 @@ const DEFS = {
       { t: 'decor', x: 10, y: 2, w: 3, h: 2, sprite: 'houseWood', text: 'A flannel wearing, hatchet wielding man has a wood workshop set up here.' },
       { t: 'npc', x: 10, y: 5, who: 'jack' },
       { t: 'craft', x: 4, y: 5, sprite: 'bench' },
-      { t: 'sign', x: 5, y: 8, text: 'DRAFT|WOOD WORKSHOP. Twenty wood makes a boat. The trees are north.' },
+      {
+        t: 'take', x: 12, y: 5, sprite: 'blockHatchet', heldSprite: 'block', item: 'hatchet', upTo: 1,
+        text: 'You pick up a hatchet.', full: 'You already have a hatchet.',
+      },
+      { t: 'sign', x: 5, y: 8, text: 'DRAFT|WOOD WORKSHOP. Twenty wood makes a boat. Take the hatchet. The trees are north.' },
     ],
   },
   '025': {
     name: 'Goblin Woods', sub: "Jack's Tree Farm", ...field, at: [3, -1],
-    gen: { open: { S: NS }, paths: [[7, 6, 2, 6]], scatter: { T: 22, u: 5 } },
-    things: [{
-      t: 'take', x: 4, y: 4, sprite: 'logs', item: 'wood', upTo: 10, text: 'DRAFT|You chop wood.',
+    gen: { open: { S: NS }, paths: [[7, 6, 2, 6]], scatter: { T: 10, u: 3 } },
+    things: pines([[3, 3], [5, 3], [10, 3], [12, 3], [3, 6], [5, 6], [10, 6], [12, 6]], {
+      upTo: 10,
+      noTool: "You need a hatchet to chop wood here. There should be one at Jack's cabin to the south.",
       full: 'Jack will only let you chop down 10 wood here. You can chop down more in the Forest.',
-    }],
+    }),
     spawns: [['goblin', 3]],
   },
   '026': {
@@ -160,7 +168,11 @@ const DEFS = {
   101: {
     name: 'Forest Path', sub: 'Wolves', ...forest, at: [4, 1],
     gen: { open: { W: WE, E: WE, N: NS }, paths: [ROAD_H, [7, 0, 2, 6]], scatter: { T: 24, b: 3 } },
-    things: [{ t: 'take', x: 3, y: 8, sprite: 'logs', item: 'wood', upTo: 20, text: 'DRAFT|You chop wood.', full: 'DRAFT|Twenty is all you can carry.' }],
+    things: pines([[2, 8], [4, 8], [6, 8], [9, 8], [11, 8], [13, 8]], {
+      upTo: 20,
+      noTool: 'DRAFT|You need a hatchet to chop these trees. Jack Lumber keeps one at his cabin.',
+      full: 'DRAFT|Twenty is all you can carry.',
+    }),
     spawns: [['wolf', 2], ['snake', 1]],
   },
   104: {

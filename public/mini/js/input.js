@@ -23,6 +23,32 @@ export const held = Object.fromEntries(BUTTONS.map((b) => [b, false]));
 export const pressed = Object.fromEntries(BUTTONS.map((b) => [b, false]));
 const queued = Object.fromEntries(BUTTONS.map((b) => [b, false]));
 
+// What a button is called depends on what you are holding. On a keyboard the
+// sword is Z, so the game says Z; on the touch pad it is A, so it says A.
+const NAMES = {
+  keys: { a: 'Z', b: 'X', y: 'C', x: 'V', start: 'Enter', map: 'Tab', back: 'Esc', move: 'The arrows move you.' },
+  touch: { a: 'A', b: 'B', y: 'Y', x: 'X', start: 'START', map: 'MAP', back: 'B', move: 'The pad moves you.' },
+};
+let device = 'keys';
+
+export function setDevice(name) {
+  if (NAMES[name]) device = name;
+}
+
+export function currentDevice() {
+  return device;
+}
+
+/** The name on the button that does `button`: label('a') is 'Z' or 'A'. */
+export function label(button) {
+  return NAMES[device][button] || button;
+}
+
+/** Fill {a}, {b}, {x}, {y}, {start}, {map}, {back} and {move} in a line of text. */
+export function withKeys(text) {
+  return String(text).replace(/\{(a|b|x|y|start|map|back|move)\}/g, (_, k) => label(k));
+}
+
 let onFirstGesture = null;
 let gestured = false;
 
@@ -65,6 +91,7 @@ export function initInput({ firstGesture } = {}) {
     if (!name) return;
     e.preventDefault();
     gesture();
+    device = 'keys';
     if (!e.repeat) setButton(name, true);
   });
   window.addEventListener('keyup', (e) => {
@@ -82,7 +109,7 @@ export function initInput({ firstGesture } = {}) {
 
 function initTouch() {
   const pad = document.getElementById('dpad');
-  const showTouch = () => document.body.classList.add('touch');
+  const showTouch = () => { document.body.classList.add('touch'); device = 'touch'; };
   if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) showTouch();
   window.addEventListener('touchstart', showTouch, { once: true, passive: true });
 
@@ -112,6 +139,7 @@ function initTouch() {
     pad.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       gesture();
+      device = 'touch';
       active = e.pointerId;
       pad.setPointerCapture(e.pointerId);
       read(e);
@@ -126,6 +154,7 @@ function initTouch() {
     const down = (e) => {
       e.preventDefault();
       gesture();
+      device = 'touch';
       el.classList.add('down');
       setButton(name, true);
     };

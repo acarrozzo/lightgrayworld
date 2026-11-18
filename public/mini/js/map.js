@@ -12,7 +12,7 @@ import { W, H, HUD_H, Buf, drawText, textWidth, panel, fillRect } from './gfx.js
 import { ROOMS } from './data/rooms.js';
 import { TILES, THEMES } from './art-tiles.js';
 import { PEOPLE, QUESTS, currentQuest, questProgress } from './data/quests.js';
-import { pressed } from './input.js';
+import { pressed, label } from './input.js';
 import { sfx } from './audio.js';
 
 const COLS = 16;
@@ -115,6 +115,7 @@ export function roomNotes(id) {
   if (kinds.has('shop')) notes.push('Shop');
   if (kinds.has('rest')) notes.push('Rest');
   if (kinds.has('craft')) notes.push('Workbench');
+  if (kinds.has('chop')) notes.push('Wood');
   if (room.boss) notes.push('Boss');
   const to = stairsLink(id);
   if (to) notes.push(room.sheet === 'zero' ? 'Way out' : ROOMS[to].sheet === 'field' ? 'Way up' : 'Way down');
@@ -130,10 +131,14 @@ export function foundEverything(player) {
   return Object.keys(ROOMS).every((id) => ROOMS[id].offMap || player.seen[id]);
 }
 
-/** The next room from `from` in a direction, among the ones `can` allows. */
-export function stepCursor(from, dx, dy, can) {
+/**
+ * The next room from `from` in a direction, among the ones `can` allows.
+ * Straight ahead first, then a wider look. `far` lets it jump to anything on
+ * that side, which the pillars need: there are only seven of them.
+ */
+export function stepCursor(from, dx, dy, can, far = false) {
   const [fx, fy] = ROOMS[from].at;
-  const pick = (loose) => {
+  const pick = (spread) => {
     let best = null;
     let bestScore = Infinity;
     for (const id of sheets.get(ROOMS[from].sheet)) {
@@ -141,13 +146,13 @@ export function stepCursor(from, dx, dy, can) {
       const [x, y] = ROOMS[id].at;
       const along = (x - fx) * dx + (y - fy) * dy;
       const across = Math.abs((x - fx) * dy) + Math.abs((y - fy) * dx);
-      if (along <= 0 || (!loose && across > along)) continue;
+      if (along <= 0 || across > along * spread) continue;
       const score = along + across * 1.5;
       if (score < bestScore) { best = id; bestScore = score; }
     }
     return best;
   };
-  return pick(false) || pick(true);
+  return pick(1) || pick(2) || (far ? pick(Infinity) : null);
 }
 
 // ------------------------------------------------------------- the screen
@@ -169,7 +174,7 @@ export function updateMap(ui, m) {
   const can = (id) => (m.travel ? !!ROOMS[id].hub && !!p.seen[id] : !!p.seen[id] || known.has(id));
   for (const [btn, dx, dy] of [['left', -1, 0], ['right', 1, 0], ['up', 0, -1], ['down', 0, 1]]) {
     if (!pressed[btn]) continue;
-    const next = stepCursor(m.cur, dx, dy, can);
+    const next = stepCursor(m.cur, dx, dy, can, m.travel);
     if (next) { m.cur = next; m.note = ''; sfx.select(); }
   }
   if (!pressed.a) return;
@@ -195,7 +200,8 @@ function miniKey(th, kind) {
     case 'tree': return th.leaf;
     case 'bush': return th.leafLight;
     case 'rock': return th.rock;
-    case 'wall': return th.wallTop;
+    // Cave walls are nearly the color of cave floors; their lit rim reads better this small.
+    case 'wall': return ['1', '2', '3'].includes(th.wallTop) ? th.wallRim : th.wallTop;
     case 'water': return th.water;
     case 'fence': case 'stump': return th.woodDark;
     case 'cavemouth': case 'stairsdown': return '0';
@@ -302,8 +308,9 @@ export function drawMap(g, ui, m) {
   }
 
   let hint = '';
-  if (m.travel) hint = m.note || (m.cur === here ? 'Pick another gold pillar.' : `A travels for 1 MP. You have ${p.mp}.`);
-  else if (p.seen[m.cur] && stairsLink(m.cur) && p.seen[stairsLink(m.cur)]) hint = `A looks at ${SHEET_NAME[ROOMS[stairsLink(m.cur)].sheet]}`;
+  if (m.travel) hint = m.note || (m.cur === here ? 'Pick another gold pillar.' : `${label('a')} travels: 1 MP of ${p.mp}`);
+  else if (p.seen[m.cur] && stairsLink(m.cur) && p.seen[stairsLink(m.cur)]) hint = `${label('a')} looks at ${SHEET_NAME[ROOMS[stairsLink(m.cur)].sheet]}`;
   drawText(g, hint, 12, top + 172, m.note ? '@' : '%');
-  drawText(g, 'B closes', W - 12 - textWidth('B closes'), top + 172, '%');
+  const closes = `${label('back')} closes`;
+  drawText(g, closes, W - 12 - textWidth(closes), top + 172, '%');
 }

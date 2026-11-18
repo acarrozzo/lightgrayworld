@@ -59,6 +59,7 @@ export const ITEMS = {
   'gold-key': { name: 'Gold Key', quest: true, icon: 'key' },
   'bat-wing': { name: 'Bat Wing', plural: 'Bat Wings', quest: true, icon: 'wing' },
   'goblin-cloak': { name: 'Goblin Cloak', quest: true, icon: 'cloak', cap: 1 },
+  hatchet: { name: 'Hatchet', quest: true, icon: 'hatchet', cap: 1 },
   wood: { name: 'Wood', quest: true, icon: 'wood', cap: 20 },
 
   // what opens the world

@@ -178,6 +178,18 @@ export function addItem(player, slug, n = 1) {
   return add;
 }
 
+/**
+ * What one tree gives you: `gives` each, until the place's own limit (`upTo`)
+ * or the bag's is reached. Zero means the tree stays standing.
+ */
+export function chopYield(player, def) {
+  const item = ITEMS[def.item];
+  if (!item) return 0;
+  const have = player.bag[def.item] || 0;
+  const cap = Math.min(def.upTo ?? Infinity, item.cap ?? 99);
+  return Math.max(0, Math.min(def.gives || 1, cap - have));
+}
+
 export function hasItem(player, slug, n = 1) {
   return (player.bag[slug] || 0) >= n;
 }

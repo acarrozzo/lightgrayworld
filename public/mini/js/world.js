@@ -19,8 +19,11 @@ export const EDGES = {
 };
 
 const bySheet = new Map();
+const sharedCells = [];       // two rooms on one square of a sheet: one would vanish
 for (const [id, room] of Object.entries(ROOMS)) {
-  bySheet.set(`${room.sheet}:${room.at[0]},${room.at[1]}`, id);
+  const key = `${room.sheet}:${room.at[0]},${room.at[1]}`;
+  if (bySheet.has(key)) sharedCells.push(`rooms ${bySheet.get(key)} and ${id} share ${key} on the map`);
+  bySheet.set(key, id);
 }
 
 /** The room on the other side of an edge, or null. */
@@ -97,7 +100,7 @@ function edgeCells(edge) {
 
 /** Every problem in the world data, as a list of sentences. Empty is good. */
 export function validateWorld() {
-  const errors = [];
+  const errors = [...sharedCells];
   for (const [id, room] of Object.entries(ROOMS)) {
     const at = `room ${id}`;
     if (!Array.isArray(room.map) || room.map.length !== ROWS) { errors.push(`${at}: needs ${ROWS} rows`); continue; }
@@ -142,6 +145,7 @@ export function validateWorld() {
         }
       }
       if (t.item && !ITEMS[t.item]) errors.push(`${at}: unknown item ${t.item}`);
+      if (t.t === 'chop' && !(t.gives > 0 && t.upTo > 0 && t.noTool && t.full)) errors.push(`${at}: the tree at ${t.x},${t.y} needs gives, upTo, noTool and full`);
       if (t.who && !PEOPLE[t.who]) errors.push(`${at}: unknown person ${t.who}`);
       if (t.shop && !SHOPS[t.shop]) errors.push(`${at}: unknown shop ${t.shop}`);
       if (t.to && t.to !== 'hub' && !ROOMS[t.to]) errors.push(`${at}: ${t.t} leads to unknown room ${t.to}`);

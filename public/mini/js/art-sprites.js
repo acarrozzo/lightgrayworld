@@ -589,18 +589,6 @@ const THINGS = {
     '....44555544',
     '.....444444',
   ],
-  logs: [
-    '', '', '', '', '', '',
-    '.....BBBBBB',
-    '....BnNNNNnB',
-    '...BBBBBBBBBB',
-    '..BnNNNNNNNNnB',
-    '..BnNnnnnnnNnB',
-    '.BBBBBBBBBBBBBB',
-    '.BNnNNNNNNNNnNB',
-    '.BNnNnnnnnnNnNB',
-    '..BBBBBBBBBBBB',
-  ],
   bench: [
     '', '', '',
     '....66......nn',
@@ -647,6 +635,21 @@ const FX = {
     '.YnY',
     '..n',
     '..n',
+  ],
+  // Points up, the same size as the sword, so it swings from the same hand.
+  hatchet: [
+    '.n66.',
+    '.n668',
+    '.n668',
+    '.n668',
+    '.n66.',
+    '.n...',
+    '.n...',
+    '.n...',
+    '.n...',
+    '.n...',
+    '.n...',
+    '.B...',
   ],
   // The arc of a swing, across the top. Rotated for the other directions.
   slash: [
@@ -708,6 +711,7 @@ const ICONS = {
   purplepotion: ['...88', '...BB', '...55', '..5vv5', '.5vvvv5', '.5vVvv5', '.5vvvv5', '.5vvvv5', '..5555'],
   wing: ['', '.......88', '.....8887', '...888877', '.8888877', '8888777', '.87777', '..777'],
   cloak: ['', '..RRRRRR', '.RRYYRRR', '.RRRRRRRR', '.RRRRRRRR', '.RrRRRRrR', '.RrRRRRrR', '.r.rRRr.r'],
+  hatchet: ['', '.8666', '866666', '86666n', '.866Nn', '....NNn', '.....NNn', '......NNn', '.......Nn'],
   wood: ['', '', '..BBBBBB', '.BnNNNNnB', '.BnNNNNnB', '..BBBBBB', '.BnNNNNnB', '.BnNNNNnB', '..BBBBBB'],
   boat: ['', '', '....8', '....88', '....888', '....B', 'BBBBBBBBBB', '.BnnnnnnB', '..BBBBBB'],
   gills: ['', '..WW..WW', '.W..WW..W', '..WW..WW', '.W..WW..W', '..WW..WW', '.W..WW..W'],
@@ -738,6 +742,64 @@ function paintPillar(glow) {
     for (const y of [8, 11, 14, 17, 20]) b.hline(6, y, 4, '4'); // five carved names
   }
   b.outline('1');
+  return b;
+}
+
+/** A young pine: the kind of tree a hatchet can take down. */
+function paintPine() {
+  const b = new Buf(16, 24);
+  b.rect(7, 19, 2, 5, 'B');
+  b.vline(8, 19, 5, 'b');
+  const tier = (y0, y1, wmax) => {
+    for (let y = y0; y <= y1; y++) {
+      const hw = Math.max(1, Math.round(1 + (wmax - 1) * ((y - y0) / (y1 - y0))));
+      for (let x = 8 - hw; x <= 7 + hw; x++) {
+        const k = (x - 7.5) / hw;
+        b.px(x, y, y === y1 ? 'f' : k < -0.35 ? 'h' : k > 0.3 ? 'g' : 'G');
+      }
+    }
+  };
+  tier(13, 20, 7);
+  tier(7, 15, 6);
+  tier(1, 9, 4);
+  b.px(7, 0, 'G');
+  b.px(8, 0, 'g');
+  b.outline('x');
+  return b;
+}
+
+/** What a pine leaves behind, with a few chips around it. */
+function paintPineStump() {
+  const b = new Buf(16, 16);
+  b.rect(5, 10, 6, 5, 'B');
+  b.vline(5, 10, 5, 'n');
+  b.vline(10, 10, 5, 'b');
+  b.ellipse(7.5, 9.6, 3.2, 1.8, 'b');
+  b.ellipse(7.5, 9.4, 2.5, 1.2, 'T');
+  b.px(7, 9, 'd');
+  b.px(3, 15, 'B'); b.px(4, 15, 'B'); b.px(11, 15, 'b'); b.px(12, 15, 'b');
+  b.px(12, 13, 'T'); b.px(13, 14, 'd'); b.px(2, 13, 'T');
+  return b;
+}
+
+/** A chopping block and two split logs, with or without the hatchet left in it. */
+function paintBlock(hatchet) {
+  const b = new Buf(16, 24);
+  b.rect(10, 19, 6, 3, 'n'); b.hline(10, 19, 6, 'N'); b.rect(14, 19, 2, 3, 'T'); b.px(15, 21, 'd'); b.hline(10, 22, 6, 'b');
+  b.rect(0, 20, 5, 3, 'n'); b.hline(0, 20, 5, 'N'); b.rect(0, 20, 2, 3, 'T'); b.px(0, 22, 'd'); b.hline(0, 23, 5, 'b');
+  b.rect(3, 13, 10, 9, 'B');
+  b.vline(3, 13, 9, 'n'); b.vline(4, 13, 9, 'n'); b.vline(12, 13, 9, 'b');
+  b.vline(7, 15, 6, 'b'); b.vline(10, 16, 5, 'b');
+  b.hline(4, 22, 8, 'b');
+  b.ellipse(7.5, 12.5, 5, 2.6, 'b');
+  b.ellipse(7.5, 12.3, 4.2, 1.9, 'T');
+  b.px(6, 12, 'd'); b.px(8, 13, 'd'); b.px(9, 12, 'd'); b.px(7, 12, 'N');
+  if (!hatchet) { b.hline(5, 12, 4, 'd'); return b; }   // the cut it left
+  for (let i = 0; i < 8; i++) { b.px(8 + i, 9 - i, 'N'); b.px(9 + i, 9 - i, 'n'); }
+  b.px(15, 1, 'b');
+  b.rect(4, 7, 5, 5, '5');
+  b.hline(4, 7, 5, '7'); b.vline(4, 7, 5, '8'); b.vline(8, 8, 4, '4'); b.hline(5, 12, 3, '3');
+  b.px(4, 12, '8');
   return b;
 }
 
@@ -919,6 +981,7 @@ export function hasArt(def) {
 export const THING_SPRITES = new Set([
   ...Object.keys(THINGS), 'goldChest', 'goldChestOpen', 'fire2', 'pillar', 'grandPillar', 'hubPillar',
   'redberryBush', 'blueberryBush', 'tent', 'cabin', 'fountain', 'gate', 'boat', 'whirl',
+  'pine', 'pineStump', 'block', 'blockHatchet',
   'houseWood', 'houseRed', 'houseBlue', 'houseShop', 'housePub',
 ]);
 
@@ -1037,6 +1100,10 @@ export function buildSprites() {
   S.things.cabin = paintCabin().toCanvas('cabin');
   S.things.hubPillar = paintPillar('gold').toCanvas('hubPillar');
   S.things.fountain = paintFountain().toCanvas('fountain');
+  S.things.pine = paintPine().toCanvas('pine');
+  S.things.pineStump = paintPineStump().toCanvas('pineStump');
+  S.things.block = paintBlock(false).toCanvas('block');
+  S.things.blockHatchet = paintBlock(true).toCanvas('blockHatchet');
   S.things.gate = paintGate().toCanvas('gate');
   S.things.boat = paintBoat().toCanvas('boat');
   S.things.whirl = [0, 1, 2].map((i) => paintWhirl(i).toCanvas('whirl'));
@@ -1050,6 +1117,8 @@ export function buildSprites() {
   S.fx.sword = { up: sword, right: rotate(sword, 1), down: rotate(sword, 2), left: rotate(sword, 3) };
   const slash = bake(FX.slash.map((r) => r.padEnd(16, '.')), null, 'slash');
   S.fx.slash = { up: slash, right: rotate(slash, 1), down: rotate(slash, 2), left: rotate(slash, 3) };
+  const hatchet = bake(FX.hatchet.map((r) => r.padEnd(5, '.')), null, 'hatchet');
+  S.fx.hatchet = { up: hatchet, right: rotate(hatchet, 1), down: rotate(hatchet, 2), left: rotate(hatchet, 3) };
   const boom = bake(FX.boomerang.map((r) => r.padEnd(8, '.')), null, 'boomerang');
   S.fx.boomerang = [boom, rotate(boom, 1), rotate(boom, 2), rotate(boom, 3)];
   S.fx.coin = bake(FX.coin.map((r) => r.padEnd(8, '.')), null, 'coin');

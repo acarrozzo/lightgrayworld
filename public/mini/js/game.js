@@ -10,7 +10,7 @@ import { ITEMS, statLine, countName } from './data/items.js';
 import { QUESTS, PEOPLE, currentQuest, questProgress } from './data/quests.js';
 import * as R from './rules.js';
 import { neighbor, check, edgeGate, EDGES } from './world.js';
-import { pressed, axis, clearInput } from './input.js';
+import { pressed, axis, clearInput, label } from './input.js';
 import { sfx, playSong } from './audio.js';
 import { saveGame } from './state.js';
 import { foundEverything, EVERYWHERE } from './map.js';
@@ -425,9 +425,11 @@ export class Game {
 
   // ----------------------------------------------------------- the sword
 
-  startSwing() {
+  /** tool: what is in the hand for this swing, when it is not the sword. */
+  startSwing(tool = null) {
     const h = this.hero;
     h.swing = SWING_T;
+    h.tool = tool;
     h.hits = new Set();
     sfx.swing();
   }
@@ -574,7 +576,7 @@ export class Game {
     for (const up of ups) {
       sfx.level();
       this.ui.toast(`LEVEL ${up.level}`, 'J');
-      this.ui.toast(`+${up.hp} HP  +${up.mp} MP  +1 point. START spends it.`, '9');
+      this.ui.toast(`+${up.hp} HP  +${up.mp} MP  +1 point. ${label('start')} spends it.`, '9');
       this.float(this.hero.x - 8, this.hero.y - 10, 'LEVEL UP', 'J');
     }
   }
@@ -818,7 +820,7 @@ export class Game {
 
   quickItem() {
     const p = this.p;
-    if (!p.quick || !p.bag[p.quick]) { sfx.deny(); this.ui.setFeed([['Nothing on X. Pick something in the bag.', 'a']]); return; }
+    if (!p.quick || !p.bag[p.quick]) { sfx.deny(); this.ui.setFeed([[`Nothing on ${label('x')}. Pick something in the bag.`, 'a']]); return; }
     const slug = p.quick;
     const res = R.useItem(p, slug);
     if (!res || res.wasted) { sfx.deny(); this.ui.setFeed([["You don't need that right now.", 'a']]); return; }
@@ -890,7 +892,8 @@ export class Game {
   // ------------------------------------------------------ talking, taking
 
   thingAt(cx, cy, wantSolid) {
-    return this.things.find((th) => !th.def.silent && !this.thingHidden(th) &&
+    // A stump has nothing more to say, and neither does a tree that already told you no.
+    return this.things.find((th) => !th.def.silent && !th.cut && !th.quiet && !this.thingHidden(th) &&
       (wantSolid === undefined || th.solid === wantSolid) &&
       cx >= th.cx && cx < th.cx + th.w && cy >= th.cy && cy < th.cy + th.h) || null;
   }
@@ -940,6 +943,7 @@ export class Game {
       return;
     }
     if (th.t === 'hub') { this.fastTravel(); return; }
+    if (th.t === 'chop') { this.chop(th); return; }
     if (th.t === 'craft') { this.craftBoat(); return; }
     if (th.t === 'toll') { this.payToll(d); return; }
     if (th.t === 'door') {
@@ -965,6 +969,38 @@ export class Game {
       return;
     }
     if (th.t === 'chest') this.openChest(th);
+  }
+
+  /**
+   * A tree a hatchet can take down. It leaves a stump until you walk off the
+   * screen. A refusal is said once a visit; after that the trees here are just
+   * trees, so a fight beside them is not interrupted by the same line.
+   */
+  chop(th) {
+    const p = this.p;
+    const d = th.def;
+    const refuse = (line) => {
+      sfx.deny();
+      for (const o of this.things) if (o.t === 'chop') o.quiet = true;
+      this.ui.say('', line);
+    };
+    if (!R.hasItem(p, 'hatchet')) { refuse(d.noTool); return; }
+    const got = R.chopYield(p, d);
+    if (!got) { refuse(d.full); return; }
+    R.addItem(p, d.item, got);
+    th.cut = true;
+    this.startSwing('hatchet');
+    sfx.cut();
+    const x = th.cx * TILE;
+    const y = th.cy * TILE;
+    this.parts.push({ poof: true, x, y: y - 6, vx: 0, vy: 0, t: 0, life: 15 });
+    for (let i = 0; i < 12; i++) {
+      this.parts.push({ x: x + 4 + Math.random() * 8, y: y - 6 + Math.random() * 14, vx: (Math.random() - 0.5) * 2.6, vy: -Math.random() * 2.2, g: 0.12, t: 0, life: 26, color: i % 3 ? (i % 2 ? 'G' : 'g') : 'N' });
+    }
+    this.float(x + 2, y - 10, `+${got}`, 'J');
+    this.ui.setFeed([['You chop down some wood.', '9'], [`${ITEMS[d.item].name} ${p.bag[d.item]}/${Math.min(d.upTo, ITEMS[d.item].cap)}`, 'J']]);
+    this.noteProgress(null, [d.item]);
+    saveGame(p);
   }
 
   /** Where you land beside a room's gold pillar. */
@@ -1044,7 +1080,7 @@ export class Game {
     const pages = [`DRAFT|You open the ${d.gold ? 'gold ' : ''}chest. Inside: ${lines.join(', ')}.`];
     for (const slug of gear) {
       const item = ITEMS[slug];
-      pages.push(`DRAFT|And a ${item.name}. ${statLine(item)}.${item.slot === 'ranged' ? ' B throws it. It reaches things a sword can not.' : ''}`);
+      pages.push(`DRAFT|And a ${item.name}. ${statLine(item)}.${item.slot === 'ranged' ? ' {b} throws it. It reaches things a sword can not.' : ''}`);
     }
     this.ui.say('', pages, () => { if (loot.xp) this.gainXp(loot.xp); saveGame(p); });
   }
@@ -1067,7 +1103,7 @@ export class Game {
         p.spells[teach.free] = true;
         if (!p.spell) p.spell = teach.free;
         pages.push(teach.first);
-        toasts.push([`Learned ${R.SPELLS[teach.free].name}. Y casts it.`, 'L']);
+        toasts.push([`Learned ${R.SPELLS[teach.free].name}. ${label('y')} casts it.`, 'L']);
       }
     }
 
@@ -1169,6 +1205,8 @@ export class Game {
       if (!d.silent && Math.hypot(dx, dy) < 44) dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
       return this.S.people[look][dir][0];
     }
+    if (th.t === 'chop') return th.cut ? T.pineStump : T.pine;
+    if (d.heldSprite && R.hasItem(this.p, d.item)) return T[d.heldSprite];
     if (th.t === 'cook' || d.sprite === 'fire') return (this.t >> 3) % 2 ? T.fire : T.fire2;
     const spr = T[d.sprite] || T.sign;
     return Array.isArray(spr) ? spr[(this.t >> 3) % spr.length] : spr;
@@ -1191,11 +1229,11 @@ export class Game {
     if (h.inv > 0 && (h.inv >> 2) % 2 === 0 && this.mode !== 'dead') return;
     const frames = this.S.people.hero[h.dir];
     const body = frames[h.swing > 0 ? 1 : (h.step >> 3) & 3];
-    const armed = !!this.p.gear.sword;
+    const armed = !!this.p.gear.sword || !!h.tool;
     const f = SWING_T - h.swing;
     const drawSword = () => {
       if (h.swing <= 0 || !armed) return;
-      const sw = this.S.fx.sword[h.dir];
+      const sw = this.S.fx[h.tool || 'sword'][h.dir];
       const sl = this.S.fx.slash[h.dir];
       if (h.dir === 'up') { g.drawImage(sw, x + 9, y - 8); if (f < 7) g.drawImage(sl, x, y - 11); }
       if (h.dir === 'down') { g.drawImage(sw, x + 2, y + 13); if (f < 7) g.drawImage(sl, x, y + 22); }
@@ -1287,7 +1325,7 @@ export class Game {
       if (this.mode === 'play' && !this.ui.busy && this.hero.swing <= 0) {
         const th = this.facingThing();
         if (th && (this.t >> 4) % 2 === 0) {
-          drawTextOutlined(g, 'A', th.cx * TILE + th.w * 8 - 3, (th.cy + th.h) * TILE - this.thingSprite(th).height - 9, 'J', 'q');
+          drawTextOutlined(g, label('a'), th.cx * TILE + th.w * 8 - 3, (th.cy + th.h) * TILE - this.thingSprite(th).height - 9, 'J', 'q');
         }
       }
 
